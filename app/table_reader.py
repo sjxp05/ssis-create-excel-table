@@ -33,14 +33,6 @@ def read_ij_table(filename, sheet_name):
     for row, col in zip(*((df == "주간활동 본인부담금(확장형)").to_numpy().nonzero())):
         EXTENDED_COPAYMENT.append((row + 2, col))
 
-    print(
-        GRADE_HEADER,
-        BASIC_MONTHLY_LIMIT[0],
-        EXTENDED_MONTHLY_LIMIT[0],
-        BASIC_COPAYMENT[0],
-        EXTENDED_COPAYMENT[0],
-    )
-
     return (
         df,
         GRADE_HEADER,
@@ -53,7 +45,32 @@ def read_ij_table(filename, sheet_name):
 
 # 종합조사 시트
 def read_jh_table(filename, sheet_name):
-    pass
+    # 파일 열기
+    df = pd.read_excel(
+        io=filename,
+        sheet_name=sheet_name,
+        engine="openpyxl",
+        header=None,
+    )
+    print(df)
+
+    # 주간활동 기본형 월 한도액, 본인부담률 시작 위치 찾기
+    for row, col in zip(*((df == "주간활동 기본형").to_numpy().nonzero())):
+        BASIC_MONTHLY_LIMIT = (row + 1, col + 17)
+        BASIC_COPAYMENT = (row + 2, col + 17)
+
+    # 주간활동 확장형 표 찾기
+    for row, col in zip(*((df == "주간활동 확장형").to_numpy().nonzero())):
+        EXTENDED_MONTHLY_LIMIT = (row + 1, col + 17)
+        EXTENDED_COPAYMENT = (row + 2, col + 17)
+
+    return (
+        df,
+        BASIC_MONTHLY_LIMIT,
+        EXTENDED_MONTHLY_LIMIT,
+        BASIC_COPAYMENT,
+        EXTENDED_COPAYMENT,
+    )
 
 
 # 산정조사 시트
@@ -65,17 +82,25 @@ def read_sj_table(filename, sheet_name):
 def get_basic_df_headers(filename, sheet_names):
 
     ij = read_ij_table(filename, sheet_names[0])
+    jh = read_jh_table(filename, sheet_names[2])
     # sj = read_sj_table(filename, sheet_names[1])
-    # jh = read_jh_table(filename, sheet_names[2])
 
-    return (ij[0], ij[1], (ij[2][0], ij[3][0]), (ij[4][0], ij[5][0]))
-    # , (jh[0], jh[1], ...)
+    return (
+        ij[0],
+        ij[1],
+        (ij[2][0], ij[3][0]),
+        (ij[4][0], ij[5][0]),
+    ), (
+        jh[0],
+        (jh[1], jh[2]),
+        (jh[3], jh[4]),
+    )
     # , (sj[0], sj[1], ...)
 
 
 # 추가급여 단가표 작성에 필요한 dataframe과 헤더 위치 정보 가져오기
 # 인정조사 등급만 해당됨
-def get_extended_headers(filename, sheet_name):
+def get_additional_df_headers(filename, sheet_name):
 
     ij = read_ij_table(filename, sheet_name)
 
