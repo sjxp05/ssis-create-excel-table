@@ -51,13 +51,13 @@ def read_ij_table(filename, sheet_name):
     )
 
 
-# 산정조사 시트
-def read_sj_table(filename, sheet_name):
+# 종합조사 시트
+def read_jh_table(filename, sheet_name):
     pass
 
 
-# 종합조사 시트
-def read_jh_table(filename, sheet_name):
+# 산정조사 시트
+def read_sj_table(filename, sheet_name):
     pass
 
 
@@ -69,8 +69,8 @@ def get_basic_df_headers(filename, sheet_names):
     # jh = read_jh_table(filename, sheet_names[2])
 
     return (ij[0], ij[1], (ij[2][0], ij[3][0]), (ij[4][0], ij[5][0]))
-    # , (sj[0], sj[1], ...)
     # , (jh[0], jh[1], ...)
+    # , (sj[0], sj[1], ...)
 
 
 # 추가급여 단가표 작성에 필요한 dataframe과 헤더 위치 정보 가져오기

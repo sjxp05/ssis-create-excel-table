@@ -28,6 +28,7 @@ DF_HEADER = [
 # 등급 수, 구간 수
 IJ_GRADE_CNT = 4  # 인정조사 등급 수
 JH_RANGE_CNT = 15  # 종합조사 구간 수
+SJ_CNT = 60  # 산정특례 종류 수
 INCOME_RANGE_CNT = 6  # 소득구간 수
 EXTENDED_CNT = 2  # 주간확장 여부
 
@@ -43,7 +44,7 @@ IJ_INCOME_RANGE_DESCRIPTION = [
     "전국가구평균소득150%초과~200%이하",
 ]
 
-JH_INCOME_RANGE_DESCRIPTION = [
+JH_SJ_INCOME_RANGE_DESCRIPTION = [
     "기초수급자",
     "차상위",
     "기준중위소득70%이하",
@@ -53,7 +54,7 @@ JH_INCOME_RANGE_DESCRIPTION = [
 ]
 
 
-def write_basic_table(filename, ij, sj=None, jh=None):
+def write_basic_table(filename, ij, jh, sj):
     # df = pd.read_excel(filename, engine="openpyxl", header=None)
     df = pd.DataFrame(data=[DF_HEADER])
     print(df)
@@ -66,6 +67,18 @@ def write_basic_table(filename, ij, sj=None, jh=None):
     ij_grade = ij[1]
     ij_monthly_limit = ij[2]
     ij_copayment = ij[3]
+
+    # 종합조사
+    jh_df: pd.DataFrame = jh[0]
+    jh_range = jh[1]
+    jh_monthly_limit = jh[2]
+    jh_copayment = jh[3]
+
+    # 산정특례
+    sj_df: pd.DataFrame = sj[0]
+    sj_grade = sj[1]
+    sj_monthly_limit = sj[2]
+    sj_copayment = sj[3]
 
     for ex in range(EXTENDED_CNT):  # 주간확장 여부: 0~1
         for g in range(IJ_GRADE_CNT):  # 등급: 시작 행 번호 + 0~3
@@ -111,7 +124,7 @@ def write_basic_table(filename, ij, sj=None, jh=None):
 
                 order_num += 1
 
-        # TODO: 종합조사까지 포함된 테이블 만들기
+        # TODO: 종합조사, 산정특례까지 포함된 테이블 만들기
 
     df.to_excel(filename, engine="openpyxl", header=None, index=None)
 
