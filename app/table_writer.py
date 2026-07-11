@@ -157,6 +157,11 @@ def write_basic_table(filename, ij, jh, sj):
                     + ("_주간확장" if ex == 1 else "")
                 )
                 df.iat[order_num, DF_HEADER.index("등급명")] = grade_name
+                
+                # 등급구분 쓰기
+                prefix = "D" if ex == 0 else "C"
+                code_num = (g * INCOME_RANGE_CNT) + ir + 1
+                df.iat[order_num, DF_HEADER.index("등급구분")] = f"{prefix}{code_num:03d}"
 
                 # 지원량(월한도액) 쓰기
                 monthly_limit = int(
@@ -202,6 +207,12 @@ def write_basic_table(filename, ij, jh, sj):
                 )
                 df.iat[order_num, DF_HEADER.index("등급명")] = grade_name
 
+                # 등급구분 쓰기
+                prefix = "D" if ex == 0 else "C"
+                code_num = 500 + (g * INCOME_RANGE_CNT) + ir + 1
+                df.iat[order_num, DF_HEADER.index("등급구분")] = f"{prefix}{code_num:03d}"
+
+
                 # 지원량(월한도액) 쓰기 (*종합은 역순으로 되어있음)
                 monthly_limit = int(
                     jh_df.iat[jh_monthly_limit[ex][0], jh_monthly_limit[ex][1] - g]
@@ -232,7 +243,7 @@ def write_basic_table(filename, ij, jh, sj):
                 )
 
                 order_num += 1
-                
+
     for ex in range(EXTENDED_CNT): 
         for s in range(SJ_CNT):  # 0~59 (특례1 ~ 특례60)
             actual_row = SJ_ORDER_MAP[s]
@@ -254,6 +265,12 @@ def write_basic_table(filename, ij, jh, sj):
                     + ("_주간확장" if ex == 1 else "")
                 )
                 df.iat[order_num, DF_HEADER.index("등급명")] = grade_name
+
+                # 등급구분 쓰기
+                prefix = "D" if ex == 0 else "C"
+                group_char = ["A", "B", "C", "D"][s // 15] # 15개 단위로 A, B, C, D 할당
+                code_num = ((s % 15) * INCOME_RANGE_CNT) + ir + 1
+                df.iat[order_num, DF_HEADER.index("등급구분")] = f"{prefix}{group_char}{code_num:02d}"
 
                 # 지원량(월한도액) 쓰기 - actual_row 위치의 데이터를 가져옴
                 monthly_limit_val = sj_df.iat[sj_monthly_limit[ex][0] + actual_row, sj_monthly_limit[ex][1]]
