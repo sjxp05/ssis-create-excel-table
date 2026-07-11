@@ -1,7 +1,7 @@
 from copy import deepcopy
 
 import pandas as pd
-
+from itertools import product
 # 헤더
 DF_HEADER = [
     "안",
@@ -63,7 +63,7 @@ def write_basic_table(filename, ij, sj=None, jh=None):
 
     # 인정조사 테이블 먼저 만들기
     ij_df: pd.DataFrame = ij[0]
-    ij_grade = ij[1]
+    ij_grade = ij[1]#등급명 시작좌표
     ij_monthly_limit = ij[2]
     ij_copayment = ij[3]
 
@@ -94,6 +94,10 @@ def write_basic_table(filename, ij, sj=None, jh=None):
                 df.iat[order_num, DF_HEADER.index("지원량")] = monthly_limit
 
                 # 본인부담금 쓰기
+                #ij_monthly_limit          # ((8, 5), (8, 6))   ← 좌표 튜플 2개가 든 튜플
+                #ij_monthly_limit[ex]      # (8, 5)             ← ex번째 좌표 하나 선택
+                #ij_monthly_limit[ex][0]   # 8                  ← 그 좌표의 행
+                #ij_monthly_limit[ex][1]   # 5                  ← 그 좌표의 열
                 copayment = ij_df.iat[ij_copayment[ex][0] + g, ij_copayment[ex][1] + ir]
                 if copayment == "면제":
                     copayment = 0
@@ -116,5 +120,59 @@ def write_basic_table(filename, ij, sj=None, jh=None):
     df.to_excel(filename, engine="openpyxl", header=None, index=None)
 
 
-def write_extra_table(filename, ij):
-    pass
+TK_GROUP = [
+    ("1등급", "최중증취약가구"), ("1등급", "최중증1인가구"),
+    ("1등급", "1등급취약가구"), ("1등급", "1등급1인가구"),
+    ("1등급", "나머지가구구성원의직장생활등"), ("1등급", None),
+    ("2등급", "2등급이하취약가구"), ("2등급", "2등급이하1인가구"), ("2등급", None),
+    ("3등급", "2등급이하취약가구"), ("3등급", "2등급이하1인가구"), ("3등급", None),
+    ("4등급", "2등급이하취약가구"), ("4등급", "2등급이하1인가구"), ("4등급", None),
+]
+TWO    = [(True, True), (True, False), (False, True), (False, False)]
+TYPES  = ["가형", "나형", "다형", "라형", "마형", "바형"]
+INCOME = ["기초수급자", "차상위", "기준중위소득70%이하", "기준중위소득70%초과~120%이하",
+          "기준중위소득120%초과~180%이하", "기준중위소득180%초과"]
+
+def write_tk_talbe(table):
+    rows_normal,rows_ext=[],[]
+    #Product를 이용해 모든 조합생성
+    #("1등급","최중증취약가구") 조합 생성 후 start=1, (1,("1등급","최중증취약가구")(True,True)) n이 start에서 특례 올라가는것
+    for n,((grade,gagu_type),(school,work))in enumerate(product(TK_GROUP,TWO),start=1):
+        info = table[(grade, gagu_type, school, work)] 
+        for k in range(6):
+            #일반
+            limit, copay=info["주간기본금액"], info["주간기본부담"][k]
+            rows_normal.append({
+                "순번": "",
+                "등급구분": "",
+                "등급명": f"특례{n}({TYPES[k]})",
+                "바우처구분": "포인트",
+                "지원량": limit,
+                "정부지원금": limit - copay,
+                "본인부담금": copay,
+                "재판정여부": "불가능",
+                "재판정기간":"",
+                "소득기준ID":"",
+                "소득구분": INCOME[k],
+                "정렬순서": "",
+                "물품코드":""
+            })
+
+            #주간확장
+            limit, copay = info["주간확장금액"], info["주간확장부담"][k]
+            rows_ext.append({
+                "순번": "",
+                "등급구분": "",
+                "등급명": f"특례{n}({TYPES[k]})_주간확장",
+                "바우처구분": "포인트",
+                "지원량": limit,
+                "정부지원금": limit - copay,
+                "본인부담금": copay,
+                "재판정여부": "불가능",
+                "재판정기간":"",
+                "소득기준ID":"",
+                "소득구분": INCOME[k],
+                "정렬순서": "",
+                "물품코드":""
+            })
+    return pd.DataFrame(rows_normal + rows_ext) 
