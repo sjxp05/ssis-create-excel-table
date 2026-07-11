@@ -53,7 +53,6 @@ def read_jh_table(filename, sheet_name):
         header=None,
     )
     print(df)
-
     # 주간활동 기본형 월 한도액, 본인부담률 시작 위치 찾기
     for row, col in zip(*((df == "주간활동 기본형").to_numpy().nonzero())):
         BASIC_MONTHLY_LIMIT = (row + 1, col + 17)
@@ -73,9 +72,55 @@ def read_jh_table(filename, sheet_name):
     )
 
 
-# 산정조사 시트
+# 산정특례 시트
 def read_sj_table(filename, sheet_name):
-    pass
+    # 파일 열기
+    df = pd.read_excel(
+        io=filename,
+        sheet_name=sheet_name,
+        engine="openpyxl",
+        header=None,
+    )
+    print(df)
+
+    # 활동지원등급 시작위치 찾기
+    TARGET_ROW = -1
+    for row, col in zip(*((df == "활동지원등급").to_numpy().nonzero())):
+        if row + 1 < len(df) and "기초" in df.iloc[row + 1].values:
+            TARGET_ROW = row
+            break
+
+    for row, col in zip(*((df == "활동지원등급").to_numpy().nonzero())):
+        if row == TARGET_ROW:  # 위쪽 예시 표 무시
+            GRADE_HEADER = (row + 2, col)
+            break
+
+    # 월 한도액(기본/확장) 시작위치 찾기
+    BASIC_MONTHLY_LIMIT = []
+    EXTENDED_MONTHLY_LIMIT = []
+    for row, col in zip(*((df == "월 한도액").to_numpy().nonzero())):
+        if row == TARGET_ROW:
+            BASIC_MONTHLY_LIMIT.append((row + 2, col+2))
+            EXTENDED_MONTHLY_LIMIT.append((row + 2, col+4))
+
+    # 구간별 본인부담금(기본형) 시작위치 찾기
+    BASIC_COPAYMENT = []
+    for row, col in zip(*((df == "주간활동 본인부담금(기본형)").to_numpy().nonzero())):
+        BASIC_COPAYMENT.append((row + 2, col))
+
+    # 구간별 본인부담금(확장형) 시작위치 찾기
+    EXTENDED_COPAYMENT = []
+    for row, col in zip(*((df == "주간활동 본인부담금(확장형)").to_numpy().nonzero())):
+        EXTENDED_COPAYMENT.append((row + 2, col))
+
+    return (
+        df,
+        GRADE_HEADER,
+        BASIC_MONTHLY_LIMIT,
+        EXTENDED_MONTHLY_LIMIT,
+        BASIC_COPAYMENT,
+        EXTENDED_COPAYMENT,
+    )
 
 
 # 기본급여 단가표 작성에 필요한 Dataframe과 헤더 위치 정보 가져오기
@@ -83,7 +128,7 @@ def get_basic_df_headers(filename, sheet_names):
 
     ij = read_ij_table(filename, sheet_names[0])
     jh = read_jh_table(filename, sheet_names[2])
-    # sj = read_sj_table(filename, sheet_names[1])
+    sj = read_sj_table(filename, sheet_names[1])
 
     return (
         ij[0],
@@ -94,8 +139,12 @@ def get_basic_df_headers(filename, sheet_names):
         jh[0],
         (jh[1], jh[2]),
         (jh[3], jh[4]),
+    ), (
+        sj[0],
+        sj[1],
+        (sj[2][0], sj[3][0]),
+        (sj[4][0], sj[5][0]),
     )
-    # , (sj[0], sj[1], ...)
 
 
 # 추가급여 단가표 작성에 필요한 dataframe과 헤더 위치 정보 가져오기
