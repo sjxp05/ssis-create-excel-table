@@ -12,6 +12,6 @@ openpyxl로 열면 특히 한셀인 경우 외부 링크를 참조하고 있어�
 pandas로 열어 DataFrame 형태로 읽기
 """
 
-ij, jh = get_basic_df_headers(JOGYEON_FILENAME, JOGYEON_SHEET_NAMES)
+ij, jh, sj = get_basic_df_headers(JOGYEON_FILENAME, JOGYEON_SHEET_NAMES)
 
-write_basic_table(DANGA_FILENAME, ij=ij, jh=jh)
+write_basic_table(DANGA_FILENAME, ij=ij, jh=jh, sj=sj)
