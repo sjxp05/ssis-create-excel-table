@@ -2,6 +2,8 @@ from copy import deepcopy
 
 import pandas as pd
 from itertools import product
+from decimal import Decimal
+
 # 헤더
 DF_HEADER = [
     "안",
@@ -120,59 +122,116 @@ def write_basic_table(filename, ij, sj=None, jh=None):
     df.to_excel(filename, engine="openpyxl", header=None, index=None)
 
 
-TK_GROUP = [
-    ("1등급", "최중증취약가구"), ("1등급", "최중증1인가구"),
-    ("1등급", "1등급취약가구"), ("1등급", "1등급1인가구"),
-    ("1등급", "나머지가구구성원의직장생활등"), ("1등급", None),
-    ("2등급", "2등급이하취약가구"), ("2등급", "2등급이하1인가구"), ("2등급", None),
-    ("3등급", "2등급이하취약가구"), ("3등급", "2등급이하1인가구"), ("3등급", None),
-    ("4등급", "2등급이하취약가구"), ("4등급", "2등급이하1인가구"), ("4등급", None),
+# TK_GROUP = [
+#     ("1등급", "최중증취약가구"), ("1등급", "최중증1인가구"),
+#     ("1등급", "1등급취약가구"), ("1등급", "1등급1인가구"),
+#     ("1등급", "나머지가구구성원의직장생활등"), ("1등급", None),
+#     ("2등급", "2등급이하취약가구"), ("2등급", "2등급이하1인가구"), ("2등급", None),
+#     ("3등급", "2등급이하취약가구"), ("3등급", "2등급이하1인가구"), ("3등급", None),
+#     ("4등급", "2등급이하취약가구"), ("4등급", "2등급이하1인가구"), ("4등급", None),
+# ]
+# TWO    = [(True, True), (True, False), (False, True), (False, False)]
+# TYPES  = ["가형", "나형", "다형", "라형", "마형", "바형"]
+# INCOME = ["기초수급자", "차상위", "기준중위소득70%이하", "기준중위소득70%초과~120%이하",
+#           "기준중위소득120%초과~180%이하", "기준중위소득180%초과"]
+
+# def write_tk_talbe(table):
+#     rows_normal,rows_ext=[],[]
+#     #Product를 이용해 모든 조합생성
+#     #("1등급","최중증취약가구") 조합 생성 후 start=1, (1,("1등급","최중증취약가구")(True,True)) n이 start에서 특례 올라가는것
+#     for n,((grade,gagu_type),(school,work))in enumerate(product(TK_GROUP,TWO),start=1):
+#         info = table[(grade, gagu_type, school, work)] 
+#         for k in range(6):
+#             #일반
+#             limit, copay=info["주간기본금액"], info["주간기본부담"][k]
+#             rows_normal.append({
+#                 "순번": "",
+#                 "등급구분": "",
+#                 "등급명": f"특례{n}({TYPES[k]})",
+#                 "바우처구분": "포인트",
+#                 "지원량": limit,
+#                 "정부지원금": limit - copay,
+#                 "본인부담금": copay,
+#                 "재판정여부": "불가능",
+#                 "재판정기간":"",
+#                 "소득기준ID":"",
+#                 "소득구분": INCOME[k],
+#                 "정렬순서": "",
+#                 "물품코드":""
+#             })
+
+#             #주간확장
+#             limit, copay = info["주간확장금액"], info["주간확장부담"][k]
+#             rows_ext.append({
+#                 "순번": "",
+#                 "등급구분": "",
+#                 "등급명": f"특례{n}({TYPES[k]})_주간확장",
+#                 "바우처구분": "포인트",
+#                 "지원량": limit,
+#                 "정부지원금": limit - copay,
+#                 "본인부담금": copay,
+#                 "재판정여부": "불가능",
+#                 "재판정기간":"",
+#                 "소득기준ID":"",
+#                 "소득구분": INCOME[k],
+#                 "정렬순서": "",
+#                 "물품코드":""
+#             })
+#     return pd.DataFrame(rows_normal + rows_ext) 
+
+
+#추가 급여 table
+ADD_HEADER=[
+    "순번",
+    "등급구분",
+    "등급명",
+    "지원량",
+    "정부지원금",
+    "본인부담금",
+    "소득구분",
+    "추가급여구분",
 ]
-TWO    = [(True, True), (True, False), (False, True), (False, False)]
-TYPES  = ["가형", "나형", "다형", "라형", "마형", "바형"]
-INCOME = ["기초수급자", "차상위", "기준중위소득70%이하", "기준중위소득70%초과~120%이하",
-          "기준중위소득120%초과~180%이하", "기준중위소득180%초과"]
 
-def write_tk_talbe(table):
-    rows_normal,rows_ext=[],[]
-    #Product를 이용해 모든 조합생성
-    #("1등급","최중증취약가구") 조합 생성 후 start=1, (1,("1등급","최중증취약가구")(True,True)) n이 start에서 특례 올라가는것
-    for n,((grade,gagu_type),(school,work))in enumerate(product(TK_GROUP,TWO),start=1):
-        info = table[(grade, gagu_type, school, work)] 
+ADD_BENEFIT_CLASSIFICATION=[
+    ("출산가구","출산","출산가구여부","A025"),
+    ("학교생활","학교생활","학교생활여부","A031"),
+    ("직장생활","직장생활","직장생활여부","A037"),
+    ("자립준비","자립준비", "자립준비여부","A043"),
+    ("보호자일시부재","보호자일시부재","보호자일시부재","A061"),
+    ("가족의직장생활","나머지가구구성원의직장생활등","가족의직장생활","A067"),
+    ("최중증1인가구","최중증1인가구","최중증1인가구여부","A073"),
+    ("1등급1인가구","1등급1인가구","1등급1인가구","A079"),
+    ("2등급1인가구","2등급이하1인가구","2등급이하1인가구","A085"),
+    ("최중증취약가구","최중증취약가구","최중증취약가구","A091"),
+    ("1등급취약가구","1등급취약가구","1등급취약가구","A097"),
+    ("2등급취약가구","2등급이하취약가구","2등급이하취약가구","A103"),
+]
+
+def write_add_table(filename,gagu_amount,add_paypercent):
+    rates=[0,0]+list(add_paypercent.values())
+    table=[]
+    seq=1
+    for name,amount_key,category,code in ADD_BENEFIT_CLASSIFICATION:
+        limit=gagu_amount[amount_key]#지원량
+        code=int(code[1:])#A뗀 수
+
         for k in range(6):
-            #일반
-            limit, copay=info["주간기본금액"], info["주간기본부담"][k]
-            rows_normal.append({
-                "순번": "",
-                "등급구분": "",
-                "등급명": f"특례{n}({TYPES[k]})",
-                "바우처구분": "포인트",
-                "지원량": limit,
-                "정부지원금": limit - copay,
-                "본인부담금": copay,
-                "재판정여부": "불가능",
-                "재판정기간":"",
-                "소득기준ID":"",
-                "소득구분": INCOME[k],
-                "정렬순서": "",
-                "물품코드":""
-            })
+            if rates[k]==0:
+                copay=0
+            else:
+                raw = Decimal(limit) * Decimal(str(rates[k]))
+                copay = int(raw // 100) * 100 #100원단위절사
 
-            #주간확장
-            limit, copay = info["주간확장금액"], info["주간확장부담"][k]
-            rows_ext.append({
-                "순번": "",
-                "등급구분": "",
-                "등급명": f"특례{n}({TYPES[k]})_주간확장",
-                "바우처구분": "포인트",
-                "지원량": limit,
-                "정부지원금": limit - copay,
-                "본인부담금": copay,
-                "재판정여부": "불가능",
-                "재판정기간":"",
-                "소득기준ID":"",
-                "소득구분": INCOME[k],
-                "정렬순서": "",
-                "물품코드":""
+            table.append({
+                "순번":seq,
+                "등급구분":f"A{code+k:03d}",
+                "등급명":f"{name}_{INCOME_RANGE_NAME[k]}형",
+                "지원량":limit,
+                "정부지원금":limit-copay,
+                "본인부담금":copay,
+                "소득구분":IJ_INCOME_RANGE_DESCRIPTION[k],
+                "추가급여구분":category,
             })
-    return pd.DataFrame(rows_normal + rows_ext) 
+            seq+=1
+    df=pd.DataFrame(table)
+    df.to_excel(filename, engine="openpyxl", header=True, index=None)

@@ -24,3 +24,7 @@
     ```pwsh
     python -m app.main
     ```
+5. 가상환경 비활성화
+    ```pwsh
+    deactivate
+    ```
