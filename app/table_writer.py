@@ -306,7 +306,35 @@ def write_basic_table(filename, ij, jh, sj):
                 )
 
                 order_num += 1
-        
+
+    # 긴급활동지원 (949번째 행)
+    # 지원량 = 종합조사 13구간 월 한도액 (2025: 1,997,000 / 2026: 2,076,000 결제단가에서 확인됨)
+    # 본인부담금 없음, 소득구분은 시스템상 ':::선택:::'
+    df.loc[order_num] = [None] * len(df.columns)
+    df.iat[order_num, DF_HEADER.index("안")] = order_num
+    df.iat[order_num, DF_HEADER.index("정렬순서")] = order_num
+    df.iat[order_num, DF_HEADER.index("등급구분")] = "D599"
+    df.iat[order_num, DF_HEADER.index("등급명")] = "긴급활동지원"
+    urgent_limit = int(
+        jh_df.iat[jh_monthly_limit[0][0], jh_monthly_limit[0][1] - 12]  # 13구간 (기본형)
+    )
+    df.iat[order_num, DF_HEADER.index("지원량")] = urgent_limit
+    df.iat[order_num, DF_HEADER.index("정부지원금")] = urgent_limit
+    df.iat[order_num, DF_HEADER.index("본인부담금")] = 0
+    df.iat[order_num, DF_HEADER.index("소득구분")] = ":::선택:::"
+    order_num += 1
+
+    # 부적합 (950번째 행): 결제가 발생하지 않는 코드, 전부 0원
+    df.loc[order_num] = [None] * len(df.columns)
+    df.iat[order_num, DF_HEADER.index("안")] = order_num
+    df.iat[order_num, DF_HEADER.index("정렬순서")] = order_num
+    df.iat[order_num, DF_HEADER.index("등급구분")] = "9999"
+    df.iat[order_num, DF_HEADER.index("등급명")] = "부적합"
+    df.iat[order_num, DF_HEADER.index("지원량")] = 0
+    df.iat[order_num, DF_HEADER.index("정부지원금")] = 0
+    df.iat[order_num, DF_HEADER.index("본인부담금")] = 0
+    df.iat[order_num, DF_HEADER.index("소득구분")] = ":::선택:::"
+    order_num += 1
 
     df.to_excel(filename, engine="openpyxl", header=None, index=None)
 
