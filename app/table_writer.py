@@ -223,7 +223,9 @@ def write_basic_table(filename, ij, jh, sj):
                 if ir == 0:  # 기초수급자(가형): 0원
                     copayment = 0
                 elif ir == 1:  # 차상위(나형): 20000원
-                    copayment = 20000
+                    # 단, 주간확장(주간활동 이용으로 월 한도액을 조정한 경우)은 면제
+                    # (고시 제2장 4. 단서 / 2025·2026 공식 단가표에서 확인)
+                    copayment = 20000 if ex == 0 else 0
                 else:  # 다형~바형
                     copayment = int(
                         jh_df.iat[
