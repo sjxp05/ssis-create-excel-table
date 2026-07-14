@@ -8,5 +8,9 @@
 # 작업중인 문서 업로드하지 않기
 ~$*.xlsx
 생성된_단가표.xlsx
+생성된_결제단가.xlsx
+
+# Claude Code 로컬 설정
+.claude/
 
 .DS_Store
