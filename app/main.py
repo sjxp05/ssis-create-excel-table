@@ -1,11 +1,11 @@
 import os
 
+from app.jogyeon_reader import get_basic_df_headers  # 실제 조견표 대응 리더 (jh만 보완)
 from app.param_store import DEFAULT_PATH
 from app.payment_writer import write_payment_table
-from app.table_reader import get_basic_df_headers
 from app.table_writer import write_basic_table
 
-JOGYEON_FILENAME = "xlsx_files/조견표_샘플.xlsx"
+JOGYEON_FILENAME = "xlsx_files/조견표_2026.xlsx"  # 실제(내부등록용) 2026 조견표
 JOGYEON_SHEET_NAMES = ["인정조사", "산정특례", "종합조사"]
 
 DANGA_FILENAME = "xlsx_files/생성된_단가표.xlsx"
