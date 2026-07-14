@@ -13,14 +13,9 @@ openpyxl로 열면 특히 한셀인 경우 외부 링크를 참조하고 있어�
 pandas로 열어 DataFrame 형태로 읽기
 """
 
-ij_basic_df_headers = get_basic_df_headers(JOGYEON_FILENAME, JOGYEON_SHEET_NAMES)
+ij, jh, sj = get_basic_df_headers(JOGYEON_FILENAME, JOGYEON_SHEET_NAMES)
 
-write_basic_table(DANGA_FILENAME, ij=ij_basic_df_headers)
-
-#특례
-# table = read_sj_table(ALL_JOGYEON_FILENAME, "산정특례")
-# tk_danga = write_tk_talbe(table)
-# tk_danga.to_excel(TK_DANGA_FILENAME, index=False)
+write_basic_table(DANGA_FILENAME, ij=ij, jh=jh, sj=sj)
 
 #추가급여단가표
 GAGU_AMOUNTS,ADD_PAYPERCENT=read_ij_sj_table_extra(ALL_JOGYEON_FILENAME,"산정특례","인정조사")
