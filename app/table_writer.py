@@ -57,6 +57,7 @@ JH_SJ_INCOME_RANGE_DESCRIPTION = [
     "기준중위소득180%초과",
 ]
 
+
 # 기본단가표
 def write_basic_table(filename, ij, jh, sj):
     # df = pd.read_excel(filename, engine="openpyxl", header=None)
@@ -68,7 +69,7 @@ def write_basic_table(filename, ij, jh, sj):
 
     # 인정조사 df, 각 시작 위치
     ij_df: pd.DataFrame = ij[0]
-    ij_grade_name = ij[1]#등급명 시작좌표
+    ij_grade_name = ij[1]  # 등급명 시작좌표
     ij_monthly_limit = ij[2]
     ij_copayment = ij[3]
 
@@ -84,16 +85,23 @@ def write_basic_table(filename, ij, jh, sj):
     sj_copayment = sj[3]
 
     # 조견표 특례 시트 상 기준 위치
-    GRADE_R = sj_grade_name[0]      # 데이터 시작 행
-    GRADE_C = sj_grade_name[1]      # 등급 열
-    MAIN_C = GRADE_C + 1            # main 추가급여 열
-    SCHOOL_C = GRADE_C + 11         # 학교생활 지원시간 열
-    WORK_C = GRADE_C + 12           # 직장생활 지원시간 열
+    GRADE_R = sj_grade_name[0]  # 데이터 시작 행
+    GRADE_C = sj_grade_name[1]  # 등급 열
+    MAIN_C = GRADE_C + 1  # main 추가급여 열
+    SCHOOL_C = GRADE_C + 11  # 학교생활 지원시간 열
+    WORK_C = GRADE_C + 12  # 직장생활 지원시간 열
 
     # 추가 특성
-    main_1_keys = ['최중증취약가구', '최중증1인가구', '1등급취약가구', '1등급1인가구', '나머지가구구성원의직장생활등', '-']
-    main_other_keys = ['2등급이하취약가구', '2등급이하1인가구', '-']
-                
+    main_1_keys = [
+        "최중증취약가구",
+        "최중증1인가구",
+        "1등급취약가구",
+        "1등급1인가구",
+        "나머지가구구성원의직장생활등",
+        "-",
+    ]
+    main_other_keys = ["2등급이하취약가구", "2등급이하1인가구", "-"]
+
     # (학교, 직장 유무) 조합
     cond_types = [(True, True), (True, False), (False, True), (False, False)]
 
@@ -105,41 +113,47 @@ def write_basic_table(filename, ij, jh, sj):
             m_val = sj_df.iat[row, MAIN_C]
             s_val = sj_df.iat[row, SCHOOL_C]
             w_val = sj_df.iat[row, WORK_C]
-                        
+
             has_school = pd.notna(s_val)
             has_work = pd.notna(w_val)
-                        
+
             if g_val != t_grade:
                 continue
-                            
+
             # 엑셀 특이점 처리: main이 '-'여야 하는데 학교나 직장이 있으면 main에 그 이름이 들어감
-            if t_main == '-':
+            if t_main == "-":
                 if is_school and is_work:
-                    if m_val == '학교생활' and has_work: return i
+                    if m_val == "학교생활" and has_work:
+                        return i
                 elif is_school:
-                    if m_val == '학교생활' and not has_work: return i
+                    if m_val == "학교생활" and not has_work:
+                        return i
                 elif is_work:
-                    if m_val == '직장생활' and not has_school: return i
+                    if m_val == "직장생활" and not has_school:
+                        return i
                 else:
-                    if m_val == '-' and not has_school and not has_work: return i
+                    if m_val == "-" and not has_school and not has_work:
+                        return i
             else:
                 if m_val == t_main and has_school == is_school and has_work == is_work:
                     return i
-        raise ValueError(f"해당 조건의 특례를 엑셀에서 찾을 수 없습니다: {t_grade}, {t_main}, 학교={is_school}, 직장={is_work}")
+        raise ValueError(
+            f"해당 조건의 특례를 엑셀에서 찾을 수 없습니다: {t_grade}, {t_main}, 학교={is_school}, 직장={is_work}"
+        )
 
     # 특례 순서 저장할 리스트
     SJ_ORDER_MAP = []
-                
+
     # 1등급
     for m in main_1_keys:
         for s_flag, w_flag in cond_types:
-            SJ_ORDER_MAP.append(get_row_offset('1등급', m, s_flag, w_flag))
-                        
+            SJ_ORDER_MAP.append(get_row_offset("1등급", m, s_flag, w_flag))
+
     # 2~4등급
-    for g in ['2등급', '3등급', '4등급']:
+    for g in ["2등급", "3등급", "4등급"]:
         for m in main_other_keys:
             for s_flag, w_flag in cond_types:
-                    SJ_ORDER_MAP.append(get_row_offset(g, m, s_flag, w_flag))
+                SJ_ORDER_MAP.append(get_row_offset(g, m, s_flag, w_flag))
 
     for ex in range(EXTENDED_CNT):  # 주간확장 여부: 0~1
         # 인정조사
@@ -161,11 +175,13 @@ def write_basic_table(filename, ij, jh, sj):
                     + ("_주간확장" if ex == 1 else "")
                 )
                 df.iat[order_num, DF_HEADER.index("등급명")] = grade_name
-                
+
                 # 등급구분 쓰기
                 prefix = "D" if ex == 0 else "C"
                 code_num = (g * INCOME_RANGE_CNT) + ir + 1
-                df.iat[order_num, DF_HEADER.index("등급구분")] = f"{prefix}{code_num:03d}"
+                df.iat[order_num, DF_HEADER.index("등급구분")] = (
+                    f"{prefix}{code_num:03d}"
+                )
 
                 # 지원량(월한도액) 쓰기
                 monthly_limit = int(
@@ -174,10 +190,10 @@ def write_basic_table(filename, ij, jh, sj):
                 df.iat[order_num, DF_HEADER.index("지원량")] = monthly_limit
 
                 # 본인부담금 쓰기
-                #ij_monthly_limit          # ((8, 5), (8, 6))   ← 좌표 튜플 2개가 든 튜플
-                #ij_monthly_limit[ex]      # (8, 5)             ← ex번째 좌표 하나 선택
-                #ij_monthly_limit[ex][0]   # 8                  ← 그 좌표의 행
-                #ij_monthly_limit[ex][1]   # 5                  ← 그 좌표의 열
+                # ij_monthly_limit          # ((8, 5), (8, 6))   ← 좌표 튜플 2개가 든 튜플
+                # ij_monthly_limit[ex]      # (8, 5)             ← ex번째 좌표 하나 선택
+                # ij_monthly_limit[ex][0]   # 8                  ← 그 좌표의 행
+                # ij_monthly_limit[ex][1]   # 5                  ← 그 좌표의 열
                 copayment = ij_df.iat[ij_copayment[ex][0] + g, ij_copayment[ex][1] + ir]
                 if copayment == "면제":
                     copayment = 0
@@ -196,7 +212,7 @@ def write_basic_table(filename, ij, jh, sj):
                 order_num += 1
 
         # 종합조사
-        for g in range(JH_RANGE_CNT):
+        for g in range(JH_RANGE_CNT):  # 0~14 (등급수)
             for ir in range(INCOME_RANGE_CNT):  # 기초, 차상위, 0~3번째 행
                 # 행 추가
                 df.loc[order_num] = [None] * len(df.columns)
@@ -218,8 +234,9 @@ def write_basic_table(filename, ij, jh, sj):
                 # 등급구분 쓰기
                 prefix = "D" if ex == 0 else "C"
                 code_num = 500 + (g * INCOME_RANGE_CNT) + ir + 1
-                df.iat[order_num, DF_HEADER.index("등급구분")] = f"{prefix}{code_num:03d}"
-
+                df.iat[order_num, DF_HEADER.index("등급구분")] = (
+                    f"{prefix}{code_num:03d}"
+                )
 
                 # 지원량(월한도액) 쓰기 (*종합은 역순으로 되어있음)
                 monthly_limit = int(
@@ -254,7 +271,7 @@ def write_basic_table(filename, ij, jh, sj):
 
                 order_num += 1
 
-    for ex in range(EXTENDED_CNT): 
+    for ex in range(EXTENDED_CNT):
         for s in range(SJ_CNT):  # 0~59 (특례1 ~ 특례60)
             actual_row = SJ_ORDER_MAP[s]
 
@@ -278,23 +295,33 @@ def write_basic_table(filename, ij, jh, sj):
 
                 # 등급구분 쓰기
                 prefix = "D" if ex == 0 else "C"
-                group_char = ["A", "B", "C", "D"][s // 15] # 15개 단위로 A, B, C, D 할당
+                group_char = ["A", "B", "C", "D"][
+                    s // 15
+                ]  # 15개 단위로 A, B, C, D 할당
                 code_num = ((s % 15) * INCOME_RANGE_CNT) + ir + 1
-                df.iat[order_num, DF_HEADER.index("등급구분")] = f"{prefix}{group_char}{code_num:02d}"
+                df.iat[order_num, DF_HEADER.index("등급구분")] = (
+                    f"{prefix}{group_char}{code_num:02d}"
+                )
 
                 # 지원량(월한도액) 쓰기 - actual_row 위치의 데이터를 가져옴
-                monthly_limit_val = sj_df.iat[sj_monthly_limit[ex][0] + actual_row, sj_monthly_limit[ex][1]]
-                
+                monthly_limit_val = sj_df.iat[
+                    sj_monthly_limit[ex][0] + actual_row, sj_monthly_limit[ex][1]
+                ]
+
                 # 이상한 텍스트가 들어오면 0으로 처리하도록 예외처리
                 try:
-                    monthly_limit = int(monthly_limit_val) if pd.notna(monthly_limit_val) else 0
+                    monthly_limit = (
+                        int(monthly_limit_val) if pd.notna(monthly_limit_val) else 0
+                    )
                 except ValueError:
                     monthly_limit = 0
-                    
+
                 df.iat[order_num, DF_HEADER.index("지원량")] = monthly_limit
 
                 # 본인부담금 쓰기 - actual_row 위치의 데이터를 가져옴
-                copayment = sj_df.iat[sj_copayment[ex][0] + actual_row, sj_copayment[ex][1] + ir]
+                copayment = sj_df.iat[
+                    sj_copayment[ex][0] + actual_row, sj_copayment[ex][1] + ir
+                ]
                 if copayment == "면제" or pd.isna(copayment):
                     copayment = 0
                 else:
@@ -302,7 +329,7 @@ def write_basic_table(filename, ij, jh, sj):
                         copayment = int(copayment)
                     except ValueError:
                         copayment = 0
-                        
+
                 df.iat[order_num, DF_HEADER.index("본인부담금")] = copayment
 
                 # 정부지원금 (지원량 - 본인부담금) 쓰기
@@ -326,7 +353,9 @@ def write_basic_table(filename, ij, jh, sj):
     df.iat[order_num, DF_HEADER.index("등급구분")] = "D599"
     df.iat[order_num, DF_HEADER.index("등급명")] = "긴급활동지원"
     urgent_limit = int(
-        jh_df.iat[jh_monthly_limit[0][0], jh_monthly_limit[0][1] - 12]  # 13구간 (기본형)
+        jh_df.iat[
+            jh_monthly_limit[0][0], jh_monthly_limit[0][1] - 12
+        ]  # 13구간 (기본형)
     )
     df.iat[order_num, DF_HEADER.index("지원량")] = urgent_limit
     df.iat[order_num, DF_HEADER.index("정부지원금")] = urgent_limit
@@ -367,7 +396,7 @@ def write_basic_table(filename, ij, jh, sj):
 #     #Product를 이용해 모든 조합생성
 #     #("1등급","최중증취약가구") 조합 생성 후 start=1, (1,("1등급","최중증취약가구")(True,True)) n이 start에서 특례 올라가는것
 #     for n,((grade,gagu_type),(school,work))in enumerate(product(TK_GROUP,TWO),start=1):
-#         info = table[(grade, gagu_type, school, work)] 
+#         info = table[(grade, gagu_type, school, work)]
 #         for k in range(6):
 #             #일반
 #             limit, copay=info["주간기본금액"], info["주간기본부담"][k]
@@ -404,12 +433,12 @@ def write_basic_table(filename, ij, jh, sj):
 #                 "정렬순서": "",
 #                 "물품코드":""
 #             })
-#     return pd.DataFrame(rows_normal + rows_ext) 
+#     return pd.DataFrame(rows_normal + rows_ext)
 
 
 # ──────────────────────────── 추가단가표 ────────────────────────────
 
-ADD_HEADER=[
+ADD_HEADER = [
     "순번",
     "등급구분",
     "등급명",
@@ -420,47 +449,50 @@ ADD_HEADER=[
     "추가급여구분",
 ]
 
-ADD_BENEFIT_CLASSIFICATION=[
-    ("출산가구","출산","출산가구여부","A025"),
-    ("학교생활","학교생활","학교생활여부","A031"),
-    ("직장생활","직장생활","직장생활여부","A037"),
-    ("자립준비","자립준비", "자립준비여부","A043"),
-    ("보호자일시부재","보호자일시부재","보호자일시부재","A061"),
-    ("가족의직장생활","나머지가구구성원의직장생활등","가족의직장생활","A067"),
-    ("최중증1인가구","최중증1인가구","최중증1인가구여부","A073"),
-    ("1등급1인가구","1등급1인가구","1등급1인가구","A079"),
-    ("2등급1인가구","2등급이하1인가구","2등급이하1인가구","A085"),
-    ("최중증취약가구","최중증취약가구","최중증취약가구","A091"),
-    ("1등급취약가구","1등급취약가구","1등급취약가구","A097"),
-    ("2등급취약가구","2등급이하취약가구","2등급이하취약가구","A103"),
+ADD_BENEFIT_CLASSIFICATION = [
+    ("출산가구", "출산", "출산가구여부", "A025"),
+    ("학교생활", "학교생활", "학교생활여부", "A031"),
+    ("직장생활", "직장생활", "직장생활여부", "A037"),
+    ("자립준비", "자립준비", "자립준비여부", "A043"),
+    ("보호자일시부재", "보호자일시부재", "보호자일시부재", "A061"),
+    ("가족의직장생활", "나머지가구구성원의직장생활등", "가족의직장생활", "A067"),
+    ("최중증1인가구", "최중증1인가구", "최중증1인가구여부", "A073"),
+    ("1등급1인가구", "1등급1인가구", "1등급1인가구", "A079"),
+    ("2등급1인가구", "2등급이하1인가구", "2등급이하1인가구", "A085"),
+    ("최중증취약가구", "최중증취약가구", "최중증취약가구", "A091"),
+    ("1등급취약가구", "1등급취약가구", "1등급취약가구", "A097"),
+    ("2등급취약가구", "2등급이하취약가구", "2등급이하취약가구", "A103"),
 ]
 
+
 # 추가단가표
-def write_add_table(filename,gagu_amount,add_paypercent):
-    rates=[0,0]+list(add_paypercent.values())
-    table=[]
-    seq=1
-    for name,amount_key,category,code in ADD_BENEFIT_CLASSIFICATION:
-        limit=gagu_amount[amount_key]#지원량
-        code=int(code[1:])#A뗀 수
+def write_add_table(filename, gagu_amount, add_paypercent):
+    rates = [0, 0] + list(add_paypercent.values())
+    table = []
+    seq = 1
+    for name, amount_key, category, code in ADD_BENEFIT_CLASSIFICATION:
+        limit = gagu_amount[amount_key]  # 지원량
+        code = int(code[1:])  # A뗀 수
 
         for k in range(6):
-            if rates[k]==0:
-                copay=0
+            if rates[k] == 0:
+                copay = 0
             else:
                 raw = Decimal(limit) * Decimal(str(rates[k]))
-                copay = int(raw // 100) * 100 #100원단위절사
+                copay = int(raw // 100) * 100  # 100원단위절사
 
-            table.append({
-                "순번":seq,
-                "등급구분":f"A{code+k:03d}",
-                "등급명":f"{name}_{INCOME_RANGE_NAME[k]}형",
-                "지원량":limit,
-                "정부지원금":limit-copay,
-                "본인부담금":copay,
-                "소득구분":IJ_INCOME_RANGE_DESCRIPTION[k],
-                "추가급여구분":category,
-            })
-            seq+=1
-    df=pd.DataFrame(table)
+            table.append(
+                {
+                    "순번": seq,
+                    "등급구분": f"A{code+k:03d}",
+                    "등급명": f"{name}_{INCOME_RANGE_NAME[k]}형",
+                    "지원량": limit,
+                    "정부지원금": limit - copay,
+                    "본인부담금": copay,
+                    "소득구분": IJ_INCOME_RANGE_DESCRIPTION[k],
+                    "추가급여구분": category,
+                }
+            )
+            seq += 1
+    df = pd.DataFrame(table)
     df.to_excel(filename, engine="openpyxl", header=True, index=None)
