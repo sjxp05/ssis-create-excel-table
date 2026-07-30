@@ -1,1 +1,19 @@
+# 가상환경
+.venv/
+*.pyc
+
+# IDE
 .vscode/
+
+# 작업중인 문서 업로드하지 않기
+~$*.xlsx
+생성된_단가표.xlsx
+생성된_결제단가.xlsx
+
+# 실제(내부등록용) 조견표는 내부 자료이므로 저장소에 올리지 않기
+조견표_2026.xlsx
+
+# Claude Code 로컬 설정
+.claude/
+
+.DS_Store/
