@@ -7,8 +7,7 @@ from app.table_writer import write_basic_table
 from app.table_reader import get_basic_df_headers, read_ij_sj_table_extra
 from app.table_writer import write_basic_table, write_add_table
 
-JOGYEON_FILENAME = "xlsx_files/조견표_2026.xlsx"  # 실제(내부등록용) 2026 조견표
-JOGYEON_FILENAME = "xlsx_files/조견표_샘플.xlsx"
+JOGYEON_FILENAME = "xlsx_files/2026_조견표.xlsx"  # 실제(내부등록용) 2026 조견표
 ALL_JOGYEON_FILENAME = "xlsx_files/2026_조견표.xlsx"
 JOGYEON_SHEET_NAMES = ["인정조사", "산정특례", "종합조사"]
 

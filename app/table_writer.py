@@ -220,7 +220,11 @@ def write_basic_table(filename, ij, jh, sj):
                 code_num = 500 + (g * INCOME_RANGE_CNT) + ir + 1
                 df.iat[order_num, DF_HEADER.index("등급구분")] = f"{prefix}{code_num:03d}"
 
-
+                target_row = jh_monthly_limit[ex][0]
+                target_col = jh_monthly_limit[ex][1] - g
+                print(f"🔍 [디버깅] {g+1}번째 루프 - 접근 좌표: (행: {target_row}, 열: {target_col})")
+                print(f"🔍 [디버깅] 해당 좌표의 실제 값: {jh_df.iat[target_row, target_col]}")
+                
                 # 지원량(월한도액) 쓰기 (*종합은 역순으로 되어있음)
                 monthly_limit = int(
                     jh_df.iat[jh_monthly_limit[ex][0], jh_monthly_limit[ex][1] - g]
