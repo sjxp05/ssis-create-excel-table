@@ -1,34 +1,11 @@
 # -*- coding: utf-8 -*-
-"""결제단가표 생성기
-
-이미 만들어진 두 재료를 결합한다 (새로운 금액 계산 없음):
-
-    기본급여 단가표 (등급구분/등급명/지원량/정부지원금/본인부담금, 950행)
-            x
-    서비스 단가 25개 조합 (payment_master.build_service_prices)
-            |
-            v
-    결제단가표 949등급 x 25조합 = 23,725행 (27열)
-
-데이터로 확인된 생성 규칙:
-- 부적합(등급구분 9999) 행은 결제단가로 전개되지 않는다 -> 950 - 1 = 949등급
-- 긴급활동지원(D599)은 일반 등급과 똑같이 모든 서비스유형에 전개된다
-- 임시공휴일 추가지원(D799, 2025년) 같은 연중 추가 등급은 기본 생성 대상이 아니다
-  (연중 공문에 따라 별도 차수로 추가되는 행)
-- 행 순서: 서비스유형(ST0001~4) -> 등급구분 알파벳순
-  (등급 안의 종류x시간 순서는 공식 파일에서도 일정한 규칙이 없어 고정 순서로 생성)
-- 정부지원금율 = 정부지원금액/지원량, 본인부담금율 = 본인부담금액/지원량
-
-단독 실행:
-    python -m app.payment_writer <기본급여단가표.xlsx> <출력.xlsx> <연도> <차수> [검증샘플.xlsx]
-"""
-
+#결제단가표 생성
 import pandas as pd
 
 from app.payment_master import BUSINESS, build_service_prices
 from app.param_store import load_params
 
-# 결제단가표의 열 순서 (실제 결제단가 파일과 동일)
+# 결제단가표의 열 순서
 COLUMNS = [
     "순번", "사업년도", "차수", "사업구분", "사업구분명", "사업유형ID", "사업유형명",
     "서비스유형ID", "서비스유형명", "서비스종류", "서비스종유명", "등급구분", "등급명",
@@ -40,13 +17,8 @@ COLUMNS = [
 # 결제로 전개하지 않는 등급 (결제가 발생할 수 없는 코드)
 EXCLUDED_GRADES = {"9999"}  # 부적합
 
-
+#기본단가표에서 결제단가에 필요한 열 읽기
 def read_basic_table(basic_xlsx):
-    """기본급여 단가표에서 결제단가에 필요한 열만 읽는다.
-
-    우리 파이프라인의 생성본(write_basic_table 결과)과
-    공식 배포본 모두 같은 열 이름을 쓰므로 둘 다 입력이 될 수 있다.
-    """
     df = pd.read_excel(basic_xlsx, engine="openpyxl")
     need = ["등급구분", "등급명", "지원량", "정부지원금", "본인부담금"]
     missing = [c for c in need if c not in df.columns]
@@ -84,9 +56,8 @@ def read_basic_table(basic_xlsx):
         )
     return df
 
-
+# 등급(기본 단가표) x 서비스 조합(25개) -> 결제단가 DataFrame
 def build_payment_table(basic_df, service_rows, year, order_no):
-    """등급(기본 단가표) x 서비스 조합(25개) -> 결제단가 DataFrame"""
     # 행 순서: 서비스유형 블록 -> 등급구분 알파벳순 (실제 파일과 동일한 배치)
     grades = basic_df.sort_values("등급구분").to_dict("records")
 
@@ -135,13 +106,8 @@ def build_payment_table(basic_df, service_rows, year, order_no):
         raise ValueError(f"행수가 기대와 다릅니다: {len(df)} != 등급 {len(grades)} x 조합 {len(service_rows)}")
     return df
 
-
+# 결제단가표를 생성해 엑셀로 저장
 def write_payment_table(basic_xlsx, out_xlsx, year, order_no):
-    """결제단가표를 생성해 엑셀로 저장한다.
-
-    '단가근거' 시트에 25개 조합의 계산 근거(고시 조항, 출처)를 함께 남겨
-    담당자가 결과 파일만 열어도 단가의 출처를 확인할 수 있게 한다.
-    """
     prices = load_params()  # 고시에서 추출된 단가 (담당자 수정분 포함, 로드 시 검증)
     service_rows = build_service_prices(prices)
     basic_df = read_basic_table(basic_xlsx)
@@ -170,13 +136,8 @@ def write_payment_table(basic_xlsx, out_xlsx, year, order_no):
     print(f"결제단가표 {len(df):,}행 생성 완료: {out_xlsx} (근거 시트 포함)")
     return df
 
-
+# 실제결제단가와 생성된 결제단가와 서로 일치하는지 대조
 def verify_against_sample(df, sample_xlsx):
-    """생성본을 실제 결제단가 샘플과 내용 기준으로 전수 대조한다.
-
-    순번과 행 배치는 공식 파일도 일정한 규칙이 없으므로(수작업 흔적),
-    순번을 제외한 26개 열의 내용을 집합으로 비교한다.
-    """
     sample = pd.read_excel(sample_xlsx, engine="openpyxl")
 
     def key_set(d):

@@ -1,32 +1,11 @@
 # -*- coding: utf-8 -*-
-"""실제(내부등록용) 조견표 대응 리더
-
-팀의 table_reader.read_jh_table 은 조견표_샘플 기준으로 작성되어 있는데,
-실제 조견표의 종합조사 시트에는 같은 앵커 문구("주간활동 확장형")가
-불완전한 블록(15등급만 있고 나머지는 빈 표)에 한 번 더 나타나서
-마지막 발견 위치를 쓰는 기존 로직이 NaN을 읽고 실패한다.
-
-이 모듈은 read_jh_table 만 보완하고(기존 팀 코드는 그대로 둠),
-인정조사/산정특례는 팀의 리더를 그대로 재사용한다.
-
-보완 방식 (gosi_reader와 같은 원칙):
-1. 앵커와 같은 행에 완전한 등급 헤더('1등급'까지)가 있는 블록만 진짜 표로 인정
-2. 열 위치를 고정 오프셋(+17)이 아니라 '1등급' 라벨의 실제 위치에서 찾음
-3. 읽을 자리의 값이 숫자가 아니면 조용히 넘어가지 않고 즉시 에러
-
-사용: main.py 에서 table_reader 대신 이 모듈의 get_basic_df_headers 를 import
-"""
-
+# 종합조사에서 사용되는 조견표를 읽음
 import pandas as pd
-
 from app.table_reader import read_ij_table, read_sj_table
-
-
 import re
 
-
+# 헤더 행에서 N등급 라벨을 한다. 열 위치 매핑 만들기
 def _grade_columns(df, row):
-    """헤더 행에서 'N등급' 라벨 -> 열 위치 매핑을 만든다."""
     cols = {}
     for col in range(df.shape[1]):
         v = df.iat[row, col]
@@ -34,7 +13,7 @@ def _grade_columns(df, row):
             cols[v.strip()] = col
     return cols
 
-
+# 앵커 문구 블록을 찾아 
 def _find_block(df, anchor):
     """앵커 문구의 블록들을 찾아 (완전한 본표 1개, 부분 보정표들)로 나눈다.
 
@@ -59,9 +38,8 @@ def _find_block(df, anchor):
         )
     return complete[0], partial
 
-
+# DataFrame을 해당되는 열에 보정한 값(월 한도액 1행 + 소득구간 4행)으로 덮어쓴다
 def _apply_corrections(df, anchor, main_row, partials):
-    """보정표의 값(월 한도액 1행 + 소득구간 4행)을 본표의 해당 등급 열에 덮어쓴다."""
     main_grades = _grade_columns(df, main_row)
     for p_row, p_grades in partials:
         for label, p_col in p_grades.items():
@@ -79,9 +57,8 @@ def _apply_corrections(df, anchor, main_row, partials):
                 df.iat[main_row + dr, m_col] = v
             print(f"[조견표] '{anchor}' {label} 값을 하단 보정표 값으로 대체했습니다.")
 
-
+# (row, col)에서 왼쪽으로 count개 칸이 전부 숫자인지 확인
 def _check_numeric(df, name, row, col, count):
-    """(row, col)에서 왼쪽으로 count개 칸이 전부 숫자인지 확인 (구간 값 검증)"""
     for g in range(count):
         v = df.iat[row, col - g]
         if pd.isna(v) or not isinstance(v, (int, float)):
@@ -90,15 +67,8 @@ def _check_numeric(df, name, row, col, count):
                 f"행 {row}, 열 {col - g} = {v!r}. 조견표 형식을 확인하세요."
             )
 
-
+# 종합조사 시트 읽기
 def read_jh_table(filename, sheet_name):
-    """종합조사 시트 읽기 - 실제 조견표 대응판 (반환 형식은 팀 코드와 동일)
-
-    반환: (df, 기본형 월한도액 위치, 확장형 월한도액 위치,
-           기본형 본인부담금 위치, 확장형 본인부담금 위치)
-    각 위치는 (행, 1구간 열) 튜플이고, write_basic_table 이
-    열 - g (g=0~14) 로 1~15구간을 읽는 방식과 호환된다.
-    """
     df = pd.read_excel(io=filename, sheet_name=sheet_name, engine="openpyxl", header=None)
 
     (r, c), partials = _find_block(df, "주간활동 기본형")
@@ -132,13 +102,8 @@ def read_jh_table(filename, sheet_name):
         EXTENDED_COPAYMENT,
     )
 
-
+# 인정조사/산정특례는 기존 get_baic_df_headers를 사용하지만 종합조사만 보완한 이 함수를 사용한다
 def get_basic_df_headers(filename, sheet_names):
-    """팀의 get_basic_df_headers 와 동일한 반환 형식.
-
-    인정조사/산정특례는 팀 리더를 그대로 쓰고,
-    종합조사만 이 모듈의 보완 리더를 사용한다.
-    """
     ij = read_ij_table(filename, sheet_names[0])
     jh = read_jh_table(filename, sheet_names[2])
     sj = read_sj_table(filename, sheet_names[1])

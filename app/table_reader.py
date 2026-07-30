@@ -1,6 +1,8 @@
 import pandas as pd
 from itertools import product
 
+# ──────────────────────────── 인정조사 ────────────────────────────
+
 # 인정조사 시트 읽고 월 한도액, 등급, 본인부담금 등 위치 찾아서 반환
 def read_ij_table(filename, sheet_name):
     # 파일 열기
@@ -43,11 +45,7 @@ def read_ij_table(filename, sheet_name):
         EXTENDED_COPAYMENT,
     )
 
-
-# 산정조사 시트
-def read_sj_table(filename, sheet_name):
-    pass
-
+# ──────────────────────────── 종합조사 ────────────────────────────
 
 # 종합조사 시트
 def read_jh_table(filename, sheet_name):
@@ -77,6 +75,7 @@ def read_jh_table(filename, sheet_name):
         EXTENDED_COPAYMENT,
     )
 
+# ──────────────────────────── 산정특례 ────────────────────────────
 
 # 산정특례 시트
 def read_sj_table(filename, sheet_name):
@@ -129,17 +128,7 @@ def read_sj_table(filename, sheet_name):
     )
 
 
-# 기본급여 단가표 작성에 필요한 Dataframe과 헤더 위치 정보 가져오기
-#BASIC_MONTHLY_LIMIT.append((8, 5))      # 위쪽 표의 기본형 열
-#EXTENDED_MONTHLY_LIMIT.append((8, 6))   # 위쪽 표의 확장형 열
-#BASIC_MONTHLY_LIMIT.append((30, 5))     # 아래쪽 표의 기본형 열
-#EXTENDED_MONTHLY_LIMIT.append((30, 6))  # 아래쪽 표의 확장형 열
-#BASIC_MONTHLY_LIMIT    = [(8, 5), (30, 5)]   # 기본형만 모임 ← 맞아요!
-#EXTENDED_MONTHLY_LIMIT = [(8, 6), (30, 6)]   # 확장형만 모임 ← 맞아요!
-#[0]=위쪽 표      [1]=아래쪽 표
-#                     (기본급여)       (추가급여)
-#BASIC (기본형)   →    (8, 5)          (30, 5)
-#EXTENDED (확장형) →   (8, 6)          (30, 6)
+# 기본급여 단가표 작성용 필요한 Dataframe과 헤더 위치 정보 가져오기
 def get_basic_df_headers(filename, sheet_names):
 
     ij = read_ij_table(filename, sheet_names[0])
@@ -162,20 +151,15 @@ def get_basic_df_headers(filename, sheet_names):
         (sj[4][0], sj[5][0]),
     )
 
-
-# 추가급여 단가표 작성에 필요한 dataframe과 헤더 위치 정보 가져오기
-# 인정조사 등급만 해당됨
+# 추가급여 단가표 작성용 필요한 dataframe과 헤더 위치 정보 가져오기 / 인정조사 등급만 해당함
 def get_extended_headers(filename, sheet_name):
 
     ij = read_ij_table(filename, sheet_name)
 
     return (ij[0], ij[1], (ij[2][1], ij[3][1]), (ij[4][1], ij[5][1]))
 
-
-
-
+# 추가급여 단가표 만들기 위해 읽어오기
 def read_ij_sj_table_extra(filename, sheet_name1, sheet_name2):
-    #파일 열기
     dfs = pd.read_excel(filename, sheet_name=[sheet_name1, sheet_name2],
                     engine="openpyxl", header=None)
     df1, df2 = dfs[sheet_name1], dfs[sheet_name2]

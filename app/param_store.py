@@ -13,6 +13,8 @@ import json
 import os
 from datetime import datetime
 
+# ──────────────────────────── 자가 검증 ────────────────────────────
+
 # 파라미터 모음집의 기본 위치 (프로젝트 루트 기준)
 DEFAULT_PATH = "params/단가_파라미터.json"
 
@@ -23,9 +25,8 @@ _GUIDE = (
     "각 값의 근거는 바로 옆 '출처'에서 확인할 수 있습니다."
 )
 
-
+# 고시(hwpx)에서 추출한 단가를 파라미터 파일에 '단가_파라미터'로 저장하고 경로 반환
 def save_params(prices, gosi_filename, path=DEFAULT_PATH):
-    """추출된 단가를 파라미터 모음집 파일로 저장하고 경로를 반환"""
     data = {
         "_안내": _GUIDE,
         "원본_고시": gosi_filename,
@@ -39,13 +40,8 @@ def save_params(prices, gosi_filename, path=DEFAULT_PATH):
         json.dump(data, f, ensure_ascii=False, indent=2)
     return path
 
-
+# 파라미터 파일 안에 있는 json '단가_파라미터' 읽기
 def load_params(path=DEFAULT_PATH):
-    """파라미터 모음집을 읽어 단가 dict를 반환 (담당자가 수정한 값 포함)
-
-    불러올 때도 gosi_reader와 같은 불변식 검증을 수행해서
-    수동 수정 실수(0 입력, 자릿수 오타 등)를 바로 잡아낸다.
-    """
     from app.gosi_reader import _validate
 
     if not os.path.exists(path):

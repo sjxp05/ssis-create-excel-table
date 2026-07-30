@@ -4,7 +4,9 @@ import pandas as pd
 from itertools import product
 from decimal import Decimal
 
-# 헤더
+# ──────────────────────────── 기본단가표 ────────────────────────────
+
+# 해더
 DF_HEADER = [
     "안",
     "사업유형ID",
@@ -55,7 +57,7 @@ JH_SJ_INCOME_RANGE_DESCRIPTION = [
     "기준중위소득180%초과",
 ]
 
-
+# 기본단가표
 def write_basic_table(filename, ij, jh, sj):
     # df = pd.read_excel(filename, engine="openpyxl", header=None)
     df = pd.DataFrame(data=[DF_HEADER])
@@ -405,7 +407,8 @@ def write_basic_table(filename, ij, jh, sj):
 #     return pd.DataFrame(rows_normal + rows_ext) 
 
 
-#추가 급여 table
+# ──────────────────────────── 추가단가표 ────────────────────────────
+
 ADD_HEADER=[
     "순번",
     "등급구분",
@@ -432,6 +435,7 @@ ADD_BENEFIT_CLASSIFICATION=[
     ("2등급취약가구","2등급이하취약가구","2등급이하취약가구","A103"),
 ]
 
+# 추가단가표
 def write_add_table(filename,gagu_amount,add_paypercent):
     rates=[0,0]+list(add_paypercent.values())
     table=[]
