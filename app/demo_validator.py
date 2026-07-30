@@ -6,9 +6,9 @@ import os
 # ──────────────────────────── 설정 ────────────────────────────
 # 검증할 파일 쌍 리스트: (생성된 파일, 기준 파일, 검증할 표 이름)
 VALIDATION_TARGETS = [
-    ("xlsx_files/생성된_단가표.xlsx", "xlsx_files/2026_기본급여.xlsx", "기본급여 단가표"),
-    ("xlsx_files/추가급여_단가표.xlsx", "xlsx_files/2026_추가급여.xlsx", "추가급여 단가표"),
-    ("xlsx_files/생성된_결제단가.xlsx", "xlsx_files/2026_결제단가.xlsx", "결제 단가표")
+    ("xlsx_files/생성된_단가표.xlsx", "xlsx_files/2025_기본급여.xlsx", "기본급여 단가표"),
+    ("xlsx_files/추가급여_단가표.xlsx", "xlsx_files/2025_추가급여.xlsx", "추가급여 단가표"),
+    ("xlsx_files/생성된_결제단가.xlsx", "xlsx_files/2025_결제단가.xlsx", "결제 단가표")
 ]
 
 # 터미널 텍스트 색상
@@ -35,7 +35,21 @@ def validate_table(gen_file, base_file, table_name):
     # 엑셀 로드
     df_gen = pd.read_excel(gen_file, header=0) 
     df_base = pd.read_excel(base_file, header=0)
-    
+
+    # 샘플 파일의 임시공휴일 행은 검증 대상에서 제외
+    if table_name == "결제 단가표":
+        before_cnt = len(df_base)
+        # 데이터프레임 전체 열을 대상으로 '임시공휴일' 텍스트가 포함된 행 찾기
+        mask = df_base.astype(str).apply(lambda x: x.str.contains('임시공휴일', na=False)).any(axis=1)
+        
+        # '임시공휴일'이 포함된 행을 제외(~mask)하고, 인덱스를 처음부터 다시 번호 매김(reset_index)
+        df_base = df_base[~mask].reset_index(drop=True)
+        after_cnt = len(df_base)
+        
+        excluded_cnt = before_cnt - after_cnt
+        if excluded_cnt > 0:
+            print(f"{COLOR_YELLOW} ⚠️ 기준 샘플에서 '임시공휴일' 관련 {excluded_cnt}개 행을 검증 대상에서 제외했습니다.{COLOR_RESET}")
+
     min_rows = min(len(df_gen), len(df_base))
     print(f" - 데이터 로드 완료! (총 {min_rows}건 비교)\n")
     time.sleep(0.5)

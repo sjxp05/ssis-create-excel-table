@@ -157,7 +157,24 @@ def write_basic_table(filename, ij, jh, sj):
 
     for ex in range(EXTENDED_CNT):  # 주간확장 여부: 0~1
         # 인정조사
-        for g in range(IJ_GRADE_CNT):  # 등급: 시작 행 번호 + 0~3
+        # 추가한 부분
+        TARGET_GRADES = ["1등급", "2등급", "3등급", "4등급"]
+        IJ_ROW_MAP = {}
+        
+        # 기준 위치에서 아래로 10칸 정도 탐색하며 실제 등급명 텍스트 찾기
+        for i in range(10): 
+            cell_val = str(ij_df.iat[ij_grade_name[0] + i, ij_grade_name[1]]).strip()
+            if cell_val in TARGET_GRADES:
+                IJ_ROW_MAP[cell_val] = i # 엑셀상의 실제 오프셋(위치) 저장
+
+        for grade_idx, target_grade in enumerate(TARGET_GRADES): #등급: 시작 행 번호 + 0~3
+        # 원래 코드: for g in range(IJ_GRADE_CNT):
+            actual_g = IJ_ROW_MAP.get(target_grade) # 실제 등급명이 있는 위치
+
+            if actual_g is None:
+                raise ValueError(f"인정조사 엑셀 표에서 '{target_grade}' 텍스트를 찾을 수 없습니다.")
+        
+        
             for ir in range(INCOME_RANGE_CNT):  # 소득: 시작 열 번호 + 0~5
                 # 행 추가
                 df.loc[order_num] = [None] * len(df.columns)
@@ -168,7 +185,7 @@ def write_basic_table(filename, ij, jh, sj):
 
                 # 등급명 쓰기 ex) 1등급(가형)
                 grade_name = (
-                    ij_df.iat[ij_grade_name[0] + g, ij_grade_name[1]]
+                    target_grade
                     + "("
                     + INCOME_RANGE_NAME[ir]
                     + "형)"
@@ -178,15 +195,18 @@ def write_basic_table(filename, ij, jh, sj):
 
                 # 등급구분 쓰기
                 prefix = "D" if ex == 0 else "C"
-                code_num = (g * INCOME_RANGE_CNT) + ir + 1
+                code_num = (grade_idx * INCOME_RANGE_CNT) + ir + 1
                 df.iat[order_num, DF_HEADER.index("등급구분")] = (
                     f"{prefix}{code_num:03d}"
                 )
 
                 # 지원량(월한도액) 쓰기
-                monthly_limit = int(
-                    ij_df.iat[ij_monthly_limit[ex][0] + g, ij_monthly_limit[ex][1]]
-                )
+                monthly_limit_val = ij_df.iat[ij_monthly_limit[ex][0] + actual_g, ij_monthly_limit[ex][1]]
+                
+                try:
+                    monthly_limit = int(monthly_limit_val) if pd.notna(monthly_limit_val) else 0
+                except ValueError:
+                    monthly_limit = 0
                 df.iat[order_num, DF_HEADER.index("지원량")] = monthly_limit
 
                 # 본인부담금 쓰기
@@ -194,9 +214,16 @@ def write_basic_table(filename, ij, jh, sj):
                 # ij_monthly_limit[ex]      # (8, 5)             ← ex번째 좌표 하나 선택
                 # ij_monthly_limit[ex][0]   # 8                  ← 그 좌표의 행
                 # ij_monthly_limit[ex][1]   # 5                  ← 그 좌표의 열
-                copayment = ij_df.iat[ij_copayment[ex][0] + g, ij_copayment[ex][1] + ir]
-                if copayment == "면제":
+
+                # 본인부담금 쓰기
+                copayment_val = ij_df.iat[ij_copayment[ex][0] + actual_g, ij_copayment[ex][1] + ir]
+                if copayment_val == "면제":
                     copayment = 0
+                else:
+                    try:
+                        copayment = int(copayment_val)
+                    except ValueError:
+                        copayment = 0
                 df.iat[order_num, DF_HEADER.index("본인부담금")] = copayment
 
                 # 정부지원금 (지원량 - 본인부담금) 쓰기
@@ -212,7 +239,24 @@ def write_basic_table(filename, ij, jh, sj):
                 order_num += 1
 
         # 종합조사
-        for g in range(JH_RANGE_CNT):  # 0~14 (등급수)
+        TARGET_ZONES = [f"{i}등급" for i in range(1, 16)]
+        JH_COL_MAP = {}
+        
+        # 월 한도액이 있는 행 기준, 위로 1~2칸 주변을 탐색하여 '1구간'~'15구간' 텍스트가 있는 실제 '열(Column)' 좌표 찾기
+        base_row = jh_monthly_limit[ex][0]
+        for r_offset in [-2, -1, 0]: 
+            for c in range(len(jh_df.columns)):
+                cell_val = str(jh_df.iat[base_row + r_offset, c]).strip()
+                if cell_val in TARGET_ZONES:
+                    JH_COL_MAP[cell_val] = c
+
+        for g in range(JH_RANGE_CNT):  # 0~14 (구간)
+            target_zone = f"{g + 1}등급"
+            actual_c = JH_COL_MAP.get(target_zone)
+
+            if actual_c is None:
+                raise ValueError(f"종합조사 엑셀 표에서 '{target_zone}' 텍스트를 찾을 수 없습니다.")
+            
             for ir in range(INCOME_RANGE_CNT):  # 기초, 차상위, 0~3번째 행
                 # 행 추가
                 df.loc[order_num] = [None] * len(df.columns)
@@ -223,7 +267,7 @@ def write_basic_table(filename, ij, jh, sj):
 
                 # 등급명 쓰기 ex) 1구간(가형)
                 grade_name = (
-                    str(g + 1)
+                    str(g+1)
                     + "구간("
                     + INCOME_RANGE_NAME[ir]
                     + "형)"
@@ -239,9 +283,11 @@ def write_basic_table(filename, ij, jh, sj):
                 )
 
                 # 지원량(월한도액) 쓰기 (*종합은 역순으로 되어있음)
-                monthly_limit = int(
-                    jh_df.iat[jh_monthly_limit[ex][0], jh_monthly_limit[ex][1] - g]
-                )
+                monthly_limit_val = jh_df.iat[base_row, actual_c]
+                try:
+                    monthly_limit = int(monthly_limit_val) if pd.notna(monthly_limit_val) else 0
+                except ValueError:
+                    monthly_limit = 0
                 df.iat[order_num, DF_HEADER.index("지원량")] = monthly_limit
 
                 # 본인부담금 쓰기
@@ -252,11 +298,11 @@ def write_basic_table(filename, ij, jh, sj):
                     # (고시 제2장 4. 단서 / 2025·2026 공식 단가표에서 확인)
                     copayment = 20000 if ex == 0 else 0
                 else:  # 다형~바형
-                    copayment = int(
-                        jh_df.iat[
-                            jh_copayment[ex][0] + (ir - 2), jh_copayment[ex][1] - g
-                        ]
-                    )
+                    copayment_val = jh_df.iat[jh_copayment[ex][0] + (ir - 2), actual_c]
+                    try:
+                        copayment = int(copayment_val) if pd.notna(copayment_val) else 0
+                    except ValueError:
+                        copayment = 0
                 df.iat[order_num, DF_HEADER.index("본인부담금")] = copayment
 
                 # 정부지원금 (지원량 - 본인부담금) 쓰기
