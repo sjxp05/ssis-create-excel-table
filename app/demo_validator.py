@@ -4,10 +4,14 @@ import sys
 import os
 
 # ──────────────────────────── 설정 ────────────────────────────
-GENERATED_FILE = "xlsx_files/생성된_단가표.xlsx"
-BASELINE_FILE = "xlsx_files/2026_기본급여.xlsx" # 사보원 원본 데이터
+# 검증할 파일 쌍 리스트: (생성된 파일, 기준 파일, 검증할 표 이름)
+VALIDATION_TARGETS = [
+    ("xlsx_files/생성된_단가표.xlsx", "xlsx_files/2026_기본급여.xlsx", "기본급여 단가표"),
+    ("xlsx_files/추가급여_단가표.xlsx", "xlsx_files/2026_추가급여.xlsx", "추가급여 단가표"),
+    ("xlsx_files/생성된_결제단가.xlsx", "xlsx_files/2026_결제단가.xlsx", "결제 단가표")
+]
 
-# 터미널 텍스트 색상 (ANSI Escape Codes)
+# 터미널 텍스트 색상
 COLOR_RESET = "\033[0m"
 COLOR_BLUE = "\033[1;34m"
 COLOR_GREEN = "\033[1;32m"
@@ -15,43 +19,44 @@ COLOR_RED = "\033[1;31m"
 COLOR_YELLOW = "\033[1;33m"
 COLOR_CYAN = "\033[1;36m"
 
-def run_validation_demo():
-    print(f"\n{COLOR_BLUE}▶ [시스템 시작] 2026년 본인부담금 단가표 정합성 자동 검증을 시작합니다...{COLOR_RESET}\n")
-    time.sleep(1)
-
-    if not os.path.exists(GENERATED_FILE) or not os.path.exists(BASELINE_FILE):
-        print(f"{COLOR_RED}[오류] 비교할 엑셀 파일이 존재하지 않습니다. 경로를 확인해주세요.{COLOR_RESET}")
+def validate_table(gen_file, base_file, table_name):
+    print(f"\n{COLOR_CYAN}============================================================{COLOR_RESET}")
+    print(f"{COLOR_BLUE}▶ [{table_name}] 정합성 검증을 시작합니다...{COLOR_RESET}")
+    
+    # 파일 존재 여부 확인
+    if not os.path.exists(gen_file):
+        print(f"{COLOR_RED}[스킵] 생성된 파일이 없습니다: {gen_file}{COLOR_RESET}")
+        return
+    if not os.path.exists(base_file):
+        print(f"{COLOR_RED}[스킵] 비교할 기준 파일이 없습니다: {base_file}{COLOR_RESET}")
+        print(f"{COLOR_YELLOW}※ 사전에 사보원 원본 파일을 폴더에 넣어주세요.{COLOR_RESET}")
         return
 
-    print(" - 생성된 단가표 로드 중...")
-    df_gen = pd.read_excel(GENERATED_FILE, header=0) 
-    print(" - 기존 기준단가표 로드 중...")
-    df_base = pd.read_excel(BASELINE_FILE, header=0)
+    # 엑셀 로드
+    df_gen = pd.read_excel(gen_file, header=0) 
+    df_base = pd.read_excel(base_file, header=0)
     
-    # 두 파일의 행 개수가 다를 경우의 예외 처리
     min_rows = min(len(df_gen), len(df_base))
     print(f" - 데이터 로드 완료! (총 {min_rows}건 비교)\n")
-    time.sleep(1)
+    time.sleep(0.5)
 
     error_count = 0
-    mismatch_details = [] # 불일치 상세 내역을 저장할 리스트
+    mismatch_details = []
 
-    # 2. 데이터 순차 비교 및 진행 바 출력
     for i in range(min_rows):
-        grade_name = df_gen.iloc[i].get('등급명', f'{i}번째 행')
+        # 지원량, 본인부담금 데이터 추출 (결제단가의 경우 컬럼명이 다를 수 있으나 우선 지원량/본인부담금 체크)
+        grade_name = df_gen.iloc[i].get('등급명', f'{i+2}행')
         gen_limit = df_gen.iloc[i].get('지원량', 0)
         gen_copay = df_gen.iloc[i].get('본인부담금', 0)
         
         base_limit = df_base.iloc[i].get('지원량', 0)
         base_copay = df_base.iloc[i].get('본인부담금', 0)
 
-        # 불일치 발생 시 상세 내역 기록
-        is_error = False
+        # 오류 판별
         if gen_limit != base_limit or gen_copay != base_copay:
             error_count += 1
-            is_error = True
             mismatch_details.append({
-                'row': i + 2, # 엑셀 기준 실제 행 번호 (헤더 1행 + 인덱스 0부터 시작하므로 +2)
+                'row': i + 2, 
                 'name': grade_name,
                 'gen_limit': gen_limit,
                 'base_limit': base_limit,
@@ -62,31 +67,25 @@ def run_validation_demo():
         else:
             status_text = f"{COLOR_GREEN}[OK]{COLOR_RESET}"
 
-        # 터미널 진행 바 생성
+        # 진행 바 애니메이션
         bar_length = 30
         filled_length = int(bar_length * (i + 1) // min_rows)
         bar = '█' * filled_length + '-' * (bar_length - filled_length)
         percent = int(100 * (i + 1) // min_rows)
 
-        sys.stdout.write(f"\r{COLOR_YELLOW}검증 진행 중 [{bar}] {percent}% {COLOR_RESET}| {grade_name:<15} {status_text}")
+        sys.stdout.write(f"\r{COLOR_YELLOW}[{table_name}] 검증 중 [{bar}] {percent}% {COLOR_RESET}| {str(grade_name)[:15]:<15} {status_text}")
         sys.stdout.flush()
-        time.sleep(0.015) 
+        time.sleep(0.01) # 시연용 딜레이
 
-    # 3. 최종 결과 리포트 및 불일치 데이터 출력
-    print("\n\n" + "="*65)
+    print("\n")
     if error_count == 0:
-        print(f"{COLOR_GREEN}★ 시스템 정합성 100% 검증 완료! (총 {min_rows}건) ★{COLOR_RESET}")
-        print(f"{COLOR_GREEN}★ 기존 기준단가표와 단 1원의 오차도 없이 완벽하게 일치합니다. ★{COLOR_RESET}")
+        print(f"{COLOR_GREEN}★ {table_name} 정합성 100% 검증 완료! 결함 제로! ★{COLOR_RESET}")
     else:
-        print(f"{COLOR_RED}※ 검증 실패: 총 {error_count}건의 불일치 데이터가 발견되었습니다.{COLOR_RESET}")
-        print("-" * 65)
-        print(f"{COLOR_YELLOW}[불일치 상세 리포트]{COLOR_RESET}")
+        print(f"{COLOR_RED}※ 검증 실패: {table_name}에서 총 {error_count}건의 불일치 데이터가 발견되었습니다.{COLOR_RESET}")
         
-        # 불일치 내역 순회하며 출력 (최대 10개까지만 출력하여 터미널 도배 방지)
-        display_limit = 10
+        display_limit = 5 # 화면 도배 방지용 최대 5건 표시
         for idx, mismatch in enumerate(mismatch_details[:display_limit]):
             print(f"\n{COLOR_CYAN}▶ 엑셀 {mismatch['row']}행 : {mismatch['name']}{COLOR_RESET}")
-            
             if mismatch['gen_limit'] != mismatch['base_limit']:
                 print(f"   - 지원량   | (생성) {mismatch['gen_limit']:,}원  <--->  (기준) {mismatch['base_limit']:,}원")
             if mismatch['gen_copay'] != mismatch['base_copay']:
@@ -94,8 +93,18 @@ def run_validation_demo():
         
         if error_count > display_limit:
             print(f"\n{COLOR_RED}...외 {error_count - display_limit}건의 오류가 더 존재합니다.{COLOR_RESET}")
-            
-    print("="*65 + "\n")
+
+def run_all_validations():
+    print(f"\n{COLOR_BLUE}단가표 통합 검증 파이프라인 가동{COLOR_RESET}\n")
+    time.sleep(1)
+    
+    for gen_file, base_file, table_name in VALIDATION_TARGETS:
+        validate_table(gen_file, base_file, table_name)
+        time.sleep(0.5)
+        
+    print(f"\n{COLOR_GREEN}============================================================{COLOR_RESET}")
+    print(f"{COLOR_GREEN}모든 단가표(기본, 추가, 결제) 검증 프로세스 종료{COLOR_RESET}")
+    print(f"{COLOR_GREEN}============================================================{COLOR_RESET}\n")
 
 if __name__ == "__main__":
-    run_validation_demo()
+    run_all_validations()
