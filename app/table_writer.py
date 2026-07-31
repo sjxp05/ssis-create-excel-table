@@ -66,6 +66,8 @@ def write_basic_table(filename, target_year, target_chasu, ij, jh, sj):
 
     # 안 및 정렬순서로 들어갈 번호
     order_num = 1
+    sort_num = 1
+    
 
     # 인정조사 df, 각 시작 위치
     ij_df: pd.DataFrame = ij[0]
@@ -157,7 +159,9 @@ def write_basic_table(filename, target_year, target_chasu, ij, jh, sj):
 
     for ex in range(EXTENDED_CNT):  # 주간확장 여부: 0~1
         # 인정조사
-        # 추가한 부분
+        if ex == 1:
+            sort_num = 241
+        
         TARGET_GRADES = ["1등급", "2등급", "3등급", "4등급"]
         IJ_ROW_MAP = {}
         
@@ -181,7 +185,7 @@ def write_basic_table(filename, target_year, target_chasu, ij, jh, sj):
 
                 # 정렬 번호 쓰기
                 df.iat[order_num, DF_HEADER.index("안")] = order_num
-                df.iat[order_num, DF_HEADER.index("정렬순서")] = order_num
+                df.iat[order_num, DF_HEADER.index("정렬순서")] = sort_num
 
                 # 등급명 쓰기 ex) 1등급(가형)
                 grade_name = (
@@ -237,6 +241,7 @@ def write_basic_table(filename, target_year, target_chasu, ij, jh, sj):
                 )
 
                 order_num += 1
+                sort_num += 1
 
         # 종합조사
         TARGET_ZONES = [f"{i}등급" for i in range(1, 16)]
@@ -263,7 +268,7 @@ def write_basic_table(filename, target_year, target_chasu, ij, jh, sj):
 
                 # 정렬 번호 쓰기
                 df.iat[order_num, DF_HEADER.index("안")] = order_num
-                df.iat[order_num, DF_HEADER.index("정렬순서")] = order_num
+                df.iat[order_num, DF_HEADER.index("정렬순서")] = sort_num
 
                 # 등급명 쓰기 ex) 1구간(가형)
                 grade_name = (
@@ -316,8 +321,15 @@ def write_basic_table(filename, target_year, target_chasu, ij, jh, sj):
                 )
 
                 order_num += 1
+                sort_num += 1
 
     for ex in range(EXTENDED_CNT):
+
+        if ex == 0:
+            sort_num = 361
+        elif ex == 1:
+            sort_num = 1081
+
         for s in range(SJ_CNT):  # 0~59 (특례1 ~ 특례60)
             actual_row = SJ_ORDER_MAP[s]
 
@@ -327,7 +339,7 @@ def write_basic_table(filename, target_year, target_chasu, ij, jh, sj):
 
                 # 정렬 번호 쓰기
                 df.iat[order_num, DF_HEADER.index("안")] = order_num
-                df.iat[order_num, DF_HEADER.index("정렬순서")] = order_num
+                df.iat[order_num, DF_HEADER.index("정렬순서")] = sort_num
 
                 # 등급명 쓰기 ex) 특례1(가형), 특례1(가형)_주간확장
                 grade_name = (
@@ -389,13 +401,14 @@ def write_basic_table(filename, target_year, target_chasu, ij, jh, sj):
                 )
 
                 order_num += 1
+                sort_num += 1
 
     # 긴급활동지원 (949번째 행)
     # 지원량 = 종합조사 13구간 월 한도액 (2025: 1,997,000 / 2026: 2,076,000 결제단가에서 확인됨)
     # 본인부담금 없음, 소득구분은 시스템상 ':::선택:::'
     df.loc[order_num] = [None] * len(df.columns)
     df.iat[order_num, DF_HEADER.index("안")] = order_num
-    df.iat[order_num, DF_HEADER.index("정렬순서")] = order_num
+    df.iat[order_num, DF_HEADER.index("정렬순서")] = sort_num
     df.iat[order_num, DF_HEADER.index("등급구분")] = "D599"
     df.iat[order_num, DF_HEADER.index("등급명")] = "긴급활동지원"
     urgent_limit = int(
@@ -408,11 +421,12 @@ def write_basic_table(filename, target_year, target_chasu, ij, jh, sj):
     df.iat[order_num, DF_HEADER.index("본인부담금")] = 0
     df.iat[order_num, DF_HEADER.index("소득구분")] = ":::선택:::"
     order_num += 1
+    sort_num += 1
 
     # 부적합 (950번째 행): 결제가 발생하지 않는 코드, 전부 0원
     df.loc[order_num] = [None] * len(df.columns)
     df.iat[order_num, DF_HEADER.index("안")] = order_num
-    df.iat[order_num, DF_HEADER.index("정렬순서")] = order_num
+    df.iat[order_num, DF_HEADER.index("정렬순서")] = 1443
     df.iat[order_num, DF_HEADER.index("등급구분")] = "9999"
     df.iat[order_num, DF_HEADER.index("등급명")] = "부적합"
     df.iat[order_num, DF_HEADER.index("지원량")] = 0
@@ -420,6 +434,7 @@ def write_basic_table(filename, target_year, target_chasu, ij, jh, sj):
     df.iat[order_num, DF_HEADER.index("본인부담금")] = 0
     df.iat[order_num, DF_HEADER.index("소득구분")] = ":::선택:::"
     order_num += 1
+    sort_num += 1
 
 
     df.iloc[1:, DF_HEADER.index("사업유형ID")] = "HWG001"  # 사업유형ID
