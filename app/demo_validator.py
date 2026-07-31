@@ -2,13 +2,14 @@ import pandas as pd
 import time
 import sys
 import os
+from app.config import YEAR, DANGA_FILENAME, ADD_DANGA_FILENAME, PAYMENT_FILENAME 
 
 # ──────────────────────────── 설정 ────────────────────────────
 # 검증할 파일 쌍 리스트: (생성된 파일, 기준 파일, 검증할 표 이름)
 VALIDATION_TARGETS = [
-    ("xlsx_files/생성된_단가표.xlsx", "xlsx_files/2025_기본급여.xlsx", "기본급여 단가표"),
-    ("xlsx_files/추가급여_단가표.xlsx", "xlsx_files/2025_추가급여.xlsx", "추가급여 단가표"),
-    ("xlsx_files/생성된_결제단가.xlsx", "xlsx_files/2025_결제단가.xlsx", "결제 단가표")
+    (DANGA_FILENAME, f"xlsx_files/{YEAR}_기본급여.xlsx", "기본급여 단가표"),
+    (ADD_DANGA_FILENAME, f"xlsx_files/{YEAR}_추가급여.xlsx", "추가급여 단가표"),
+    (PAYMENT_FILENAME, f"xlsx_files/{YEAR}_결제단가.xlsx", "결제 단가표")
 ]
 
 # 터미널 텍스트 색상
@@ -51,6 +52,8 @@ def validate_table(gen_file, base_file, table_name):
             print(f"{COLOR_YELLOW} ⚠️ 기준 샘플에서 '임시공휴일' 관련 {excluded_cnt}개 행을 검증 대상에서 제외했습니다.{COLOR_RESET}")
 
     min_rows = min(len(df_gen), len(df_base))
+
+    common_cols = [col for col in df_gen.columns if col in df_base.columns]
     print(f" - 데이터 로드 완료! (총 {min_rows}건 비교)\n")
     time.sleep(0.5)
 
@@ -60,22 +63,39 @@ def validate_table(gen_file, base_file, table_name):
     for i in range(min_rows):
         # 지원량, 본인부담금 데이터 추출 (결제단가의 경우 컬럼명이 다를 수 있으나 우선 지원량/본인부담금 체크)
         grade_name = df_gen.iloc[i].get('등급명', f'{i+2}행')
-        gen_limit = df_gen.iloc[i].get('지원량', 0)
-        gen_copay = df_gen.iloc[i].get('본인부담금', 0)
-        
-        base_limit = df_base.iloc[i].get('지원량', 0)
-        base_copay = df_base.iloc[i].get('본인부담금', 0)
+        is_error = False
+        row_errors = []
 
-        # 오류 판별
-        if gen_limit != base_limit or gen_copay != base_copay:
+        for col in common_cols:
+            gen_val = df_gen.at[i, col]
+            base_val = df_base.at[i, col]
+
+            # 둘 다 비어있는 칸(NaN)이면 정상으로 간주하고 패스
+            if pd.isna(gen_val) and pd.isna(base_val):
+                continue
+
+            # 숫자형 비교: 타입에러는 패스(int, float 달라도 값만 같으면 넘어감)
+            try:
+                if float(gen_val) == float(base_val):
+                    continue
+            except (ValueError, TypeError):
+                pass
+
+            # 문자열 비교
+            if str(gen_val).strip() != str(base_val).strip():
+                is_error = True
+                row_errors.append({
+                    'col': col,
+                    'gen': gen_val,
+                    'base': base_val
+                })
+
+        if is_error:
             error_count += 1
             mismatch_details.append({
-                'row': i + 2, 
+                'row': i+2,
                 'name': grade_name,
-                'gen_limit': gen_limit,
-                'base_limit': base_limit,
-                'gen_copay': gen_copay,
-                'base_copay': base_copay
+                'errors': row_errors
             })
             status_text = f"{COLOR_RED}[FAIL]{COLOR_RESET}"
         else:
@@ -100,11 +120,15 @@ def validate_table(gen_file, base_file, table_name):
         display_limit = 5 # 화면 도배 방지용 최대 5건 표시
         for idx, mismatch in enumerate(mismatch_details[:display_limit]):
             print(f"\n{COLOR_CYAN}▶ 엑셀 {mismatch['row']}행 : {mismatch['name']}{COLOR_RESET}")
-            if mismatch['gen_limit'] != mismatch['base_limit']:
-                print(f"   - 지원량   | (생성) {mismatch['gen_limit']:,}원  <--->  (기준) {mismatch['base_limit']:,}원")
-            if mismatch['gen_copay'] != mismatch['base_copay']:
-                print(f"   - 본인부담 | (생성) {mismatch['gen_copay']:,}원  <--->  (기준) {mismatch['base_copay']:,}원")
-        
+            for err in mismatch['errors']:
+                
+                # 금액 등 숫자인 경우 콤마 처리, 문자인 경우 그대로 출력
+                val_g, val_b = err['gen'], err['base']
+                str_g = f"{int(val_g):,}" if isinstance(val_g, (int, float)) and pd.notna(val_g) else str(val_g)
+                str_b = f"{int(val_b):,}" if isinstance(val_b, (int, float)) and pd.notna(val_b) else str(val_b)
+                
+                print(f"   - {err['col']:<8} | (생성) {str_g}  <--->  (기준) {str_b}")
+                
         if error_count > display_limit:
             print(f"\n{COLOR_RED}...외 {error_count - display_limit}건의 오류가 더 존재합니다.{COLOR_RESET}")
 

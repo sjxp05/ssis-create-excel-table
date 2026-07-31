@@ -59,7 +59,7 @@ JH_SJ_INCOME_RANGE_DESCRIPTION = [
 
 
 # 기본단가표
-def write_basic_table(filename, ij, jh, sj):
+def write_basic_table(filename, target_year, target_chasu, ij, jh, sj):
     # df = pd.read_excel(filename, engine="openpyxl", header=None)
     df = pd.DataFrame(data=[DF_HEADER])
     print(df)
@@ -420,6 +420,18 @@ def write_basic_table(filename, ij, jh, sj):
     df.iat[order_num, DF_HEADER.index("본인부담금")] = 0
     df.iat[order_num, DF_HEADER.index("소득구분")] = ":::선택:::"
     order_num += 1
+
+
+    df.iloc[1:, DF_HEADER.index("사업유형ID")] = "HWG001"  # 사업유형ID
+    df.iloc[1:, DF_HEADER.index("사업년도")] = target_year # 사업년도
+    df.iloc[1:, DF_HEADER.index("차수")] = target_chasu   # 차수
+    df.iloc[1:, DF_HEADER.index("바우처구분")] = "포인트"    # 바우처구분
+    df.iloc[1:, DF_HEADER.index("재판정여부")] = "불가능"    # 재판정여부
+
+    # 헤더 원상복구
+    for col_idx, col_name in enumerate(DF_HEADER):
+        df.iat[0, col_idx] = col_name
+
 
     df.to_excel(filename, engine="openpyxl", header=None, index=None)
 
