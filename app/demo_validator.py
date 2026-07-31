@@ -40,20 +40,34 @@ def validate_table(gen_file, base_file, table_name):
     # 샘플 파일의 임시공휴일 행은 검증 대상에서 제외
     if table_name == "결제 단가표":
         before_cnt = len(df_base)
-        # 데이터프레임 전체 열을 대상으로 '임시공휴일' 텍스트가 포함된 행 찾기
-        mask = df_base.astype(str).apply(lambda x: x.str.contains('임시공휴일', na=False)).any(axis=1)
         
-        # '임시공휴일'이 포함된 행을 제외(~mask)하고, 인덱스를 처음부터 다시 번호 매김(reset_index)
+        # 데이터프레임 전체 열을 대상으로 등급구분이 D799인 행(임시공휴일) mask에 담기
+        mask = df_base['등급구분'] == 'D799'
+        
+        # mask 행들을 제외하고, 인덱스를 처음부터 다시 번호 매김(reset_index)
         df_base = df_base[~mask].reset_index(drop=True)
         after_cnt = len(df_base)
         
         excluded_cnt = before_cnt - after_cnt
         if excluded_cnt > 0:
-            print(f"{COLOR_YELLOW} ⚠️ 기준 샘플에서 '임시공휴일' 관련 {excluded_cnt}개 행을 검증 대상에서 제외했습니다.{COLOR_RESET}")
-
-    min_rows = min(len(df_gen), len(df_base))
+            print(f"{COLOR_YELLOW} ⚠️ 기준 샘플에서 '임시공휴일' 관련 {excluded_cnt}개 행을 검증 대상에서 제외 {COLOR_RESET}")
 
     common_cols = [col for col in df_gen.columns if col in df_base.columns]
+    if table_name == "결제 단가표":
+        excluded_cols = ['순번' , '차수']
+        common_cols = [col for col in common_cols if col not in excluded_cols]
+        print(f"{COLOR_YELLOW} [결제단가표] '순번' 및 '차수' 열 검증 대상에서 제외 {COLOR_RESET}")    
+
+        # 등급구분, 서비스유형, 서비스종류, 서비스시간 조합하여 다중정렬
+        pk_candidates = ['등급구분', '서비스유형ID', '서비스종류', '서비스시간']
+        sort_keys = [c for c in pk_candidates if c in common_cols]
+        
+        if sort_keys:
+            df_gen = df_gen.sort_values(by=sort_keys).reset_index(drop=True)
+            df_base = df_base.sort_values(by=sort_keys).reset_index(drop=True)
+            print(f"{COLOR_YELLOW} [결제단가표] 행 순서 관계없이 비교하기 위해 {sort_keys} 기준으로 새롭게 다중 정렬 적용 {COLOR_RESET}")
+
+    min_rows = min(len(df_gen), len(df_base))
     print(f" - 데이터 로드 완료! (총 {min_rows}건 비교)\n")
     time.sleep(0.5)
 
@@ -61,7 +75,6 @@ def validate_table(gen_file, base_file, table_name):
     mismatch_details = []
 
     for i in range(min_rows):
-        # 지원량, 본인부담금 데이터 추출 (결제단가의 경우 컬럼명이 다를 수 있으나 우선 지원량/본인부담금 체크)
         grade_name = df_gen.iloc[i].get('등급명', f'{i+2}행')
         is_error = False
         row_errors = []
@@ -113,7 +126,7 @@ def validate_table(gen_file, base_file, table_name):
 
     print("\n")
     if error_count == 0:
-        print(f"{COLOR_GREEN}★ {table_name} 정합성 100% 검증 완료! 결함 제로! ★{COLOR_RESET}")
+        print(f"{COLOR_GREEN} {table_name} 정합성 100% 검증 완료! {COLOR_RESET}")
     else:
         print(f"{COLOR_RED}※ 검증 실패: {table_name}에서 총 {error_count}건의 불일치 데이터가 발견되었습니다.{COLOR_RESET}")
         
@@ -121,13 +134,8 @@ def validate_table(gen_file, base_file, table_name):
         for idx, mismatch in enumerate(mismatch_details[:display_limit]):
             print(f"\n{COLOR_CYAN}▶ 엑셀 {mismatch['row']}행 : {mismatch['name']}{COLOR_RESET}")
             for err in mismatch['errors']:
-                
-                # 금액 등 숫자인 경우 콤마 처리, 문자인 경우 그대로 출력
                 val_g, val_b = err['gen'], err['base']
-                str_g = f"{int(val_g):,}" if isinstance(val_g, (int, float)) and pd.notna(val_g) else str(val_g)
-                str_b = f"{int(val_b):,}" if isinstance(val_b, (int, float)) and pd.notna(val_b) else str(val_b)
-                
-                print(f"   - {err['col']:<8} | (생성) {str_g}  <--->  (기준) {str_b}")
+                print(f"   - {err['col']:<8} | (생성) {val_g}  <--->  (기준) {val_b}")
                 
         if error_count > display_limit:
             print(f"\n{COLOR_RED}...외 {error_count - display_limit}건의 오류가 더 존재합니다.{COLOR_RESET}")
