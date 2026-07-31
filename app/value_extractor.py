@@ -1,0 +1,188 @@
+import pandas as pd
+from itertools import product
+
+# 인정조사 시트 읽고 A값, 본인부담금 상한액, 본인부담률 등 값 반환
+def read_ij_value(filename, sheet_name):
+    # 파일 열기
+    df = pd.read_excel(
+        io=filename,
+        sheet_name=sheet_name,
+        engine="openpyxl",
+        header=None,
+    )
+
+    ij_data = {
+        "기본단가": None,
+        "A값": None,
+        "본인부담금 상한액": None,
+        "인정조사 본인부담률 (기본급여)": [],
+        "인정조사 본인부담률 (추가급여)": [],
+        "인정조사 월한도액 (기본형)": [],
+        "인정조사 월한도액 (확장형)": [],
+    }
+
+    # 기본단가
+    for row, col in zip(*((df == "기본단가").to_numpy().nonzero())):
+        ij_data["기본단가"] = df.iat[row, col+1]
+
+    # A값
+    mask = df.astype(str).apply(lambda x: x.str.contains("A값", na=False))
+    for row, col in zip(*mask.to_numpy().nonzero()):
+        ij_data["A값"] = df.iat[row, col+1]
+        ij_data["본인부담금 상한액"] = df.iloc[row, col+2]
+        
+    #부담률
+    for row, col in zip(*((df == "기본 부담률").to_numpy().nonzero())):
+        for i in range(1, 5):
+            ij_data["인정조사 본인부담률 (기본급여)"].append(df.iat[row, col+i])
+            ij_data["인정조사 본인부담률 (추가급여)"].append(df.iat[row+1, col+i])
+        
+    # 월 한도액(기본/확장)
+    TARGET_GRADES = ["1등급", "2등급", "3등급", "4등급"]
+    IJ_ROW_MAP = {}
+    grade_cell = ()
+    for row, col in zip(*((df == "활동지원등급").to_numpy().nonzero())):
+        grade_cell = (row+2, col)
+    
+    for i in range(5): 
+        cell_val = str(df.iat[grade_cell[0] + i, grade_cell[1]]).strip()
+        if cell_val in TARGET_GRADES:
+            IJ_ROW_MAP[cell_val] = i # 엑셀상의 실제 오프셋(위치) 저장
+
+    for grade_name, offset in IJ_ROW_MAP.items():
+        ij_data["인정조사 월한도액 (기본형)"].append(df.iat[grade_cell[0]+offset, grade_cell[1]+3])
+        ij_data["인정조사 월한도액 (확장형)"].append(df.iat[grade_cell[0]+offset, grade_cell[1]+4])
+        
+
+    return ij_data
+
+# 산정 특례
+def read_sj_value(filename, sheet_name):
+    # 파일 열기
+    df = pd.read_excel(
+        io=filename,
+        sheet_name=sheet_name,
+        engine="openpyxl",
+        header=None,
+    )
+
+    sj_data = {
+        "종합조사/산정특례 본인부담률": [],
+        "추가급여 월한도액": []
+    }
+
+    # 부담률
+    rate_cell = ()
+    mask = df.astype(str).apply(lambda x: x.str.contains("기준중위소득", na=False))
+    rows, cols = mask.to_numpy().nonzero()
+    if len(rows) > 0:
+        rate_cell = (rows[0]+1, cols[0])
+
+    for i in range(4):
+        sj_data["종합조사/산정특례 본인부담률"].append(df.iat[rate_cell[0], rate_cell[1]+i])
+
+
+    # 추가급여 월 한도액
+    TARGET_KEYWORDS = [ 
+        "최중증1인가구", "1등급1인가구", "2등급이하1인가구", "최중증취약가구", "1등급취약가구",
+        "2등급이하취약가구", "출산", "자립준비", "학교생활", "직장생활", "보호자일시부재", "나머지가구구성원의직장생활등",
+    ]
+    SJ_COL_MAP = {}
+    target_cell = ()
+    mask = df.astype(str).apply(lambda x: x.str.contains("최중증1인가구", na=False))
+    rows, cols = mask.to_numpy().nonzero()
+
+    if len(rows) > 0:
+        target_cell = (rows[0], cols[0])
+    
+    for i in range(20): 
+        try:
+            cell_val = str(df.iat[target_cell[0], target_cell[1]+i])
+            clean_val = cell_val.replace(" ", "").replace("\n", "").strip()
+                
+            if clean_val in TARGET_KEYWORDS:
+                SJ_COL_MAP[clean_val] = i 
+        except IndexError:
+            break
+
+    for keyword in TARGET_KEYWORDS:
+        if keyword in SJ_COL_MAP:
+            offset = SJ_COL_MAP[keyword]
+            sj_data["추가급여 월한도액"].append(df.iat[target_cell[0]+1, target_cell[1]+offset])
+        else:
+            sj_data["추가급여 월한도액"].append(0) # 못 찾은 경우 0
+        
+
+    return sj_data
+
+
+# 종합 조사
+def read_jh_value(filename, sheet_name):
+    # 파일 열기
+    df = pd.read_excel(
+        io=filename,
+        sheet_name=sheet_name,
+        engine="openpyxl",
+        header=None,
+    )
+
+    jh_data = {
+        "종합조사 월한도액 (기본형)": [],
+        "종합조사 월한도액 (확장형)": []
+    }
+
+    # 월 한도액(기본/확장)
+    TARGET_GRADES = [f"{i}등급" for i in range(1, 16)]
+    JH_COL_MAP = {}
+    basic_grade_cell = ()
+    expand_grade_cell = ()
+
+    for row, col in zip(*((df == "주간활동 기본형").to_numpy().nonzero())):
+        basic_grade_cell = (row, col+3)
+
+    for row, col in zip(*((df == "주간활동 확장형").to_numpy().nonzero())):
+            expand_grade_cell = (row, col+3)
+    
+
+    for i in range(20):  
+        try:
+            cell_val = str(df.iat[basic_grade_cell[0], basic_grade_cell[1]+i])
+            clean_val = cell_val.replace(" ", "").replace("\n", "").strip()
+                
+            if clean_val in TARGET_GRADES:
+                JH_COL_MAP[clean_val] = i
+        except IndexError:
+            break
+    
+    for grade in TARGET_GRADES:
+        if grade in JH_COL_MAP:
+            offset = JH_COL_MAP[grade]
+            jh_data["종합조사 월한도액 (기본형)"].append(df.iat[basic_grade_cell[0]+1, basic_grade_cell[1]+offset])
+            jh_data["종합조사 월한도액 (확장형)"].append(df.iat[expand_grade_cell[0]+1, expand_grade_cell[1]+offset])
+        else:
+            jh_data["종합조사 월한도액 (기본형)"].append(0)
+            jh_data["종합조사 월한도액 (확장형)"].append(0)
+            
+    return jh_data
+
+def get_data_for_app(filename, sheet_names):
+    ij_data = read_ij_value(filename, sheet_names[0])
+    sj_data = read_sj_value(filename, sheet_names[1])
+    jh_data = read_jh_value(filename, sheet_names[2])
+
+    return (
+        {
+            "기본단가": ij_data["기본단가"],
+            "A값": ij_data["A값"],
+            "본인부담금 상한액": ij_data["본인부담금 상한액"],
+            "인정조사 본인부담률 (기본급여)": ij_data["인정조사 본인부담률 (기본급여)"], 
+            "인정조사 본인부담률 (추가급여)": ij_data["인정조사 본인부담률 (추가급여)"], 
+            "종합조사/산정특례 본인부담률": sj_data["종합조사/산정특례 본인부담률"],
+            "인정조사 월한도액 (기본형)": ij_data["인정조사 월한도액 (기본형)"],
+            "인정조사 월한도액 (확장형)": ij_data["인정조사 월한도액 (확장형)"],
+            "종합조사 월한도액 (기본형)": jh_data["종합조사 월한도액 (기본형)"],
+            "종합조사 월한도액 (확장형)": jh_data["종합조사 월한도액 (확장형)"],
+            "추가급여 월한도액": sj_data["추가급여 월한도액"],
+
+        }
+    )
