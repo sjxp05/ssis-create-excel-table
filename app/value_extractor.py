@@ -65,10 +65,22 @@ def read_sj_value(filename, sheet_name):
         engine="openpyxl",
         header=None,
     )
-
     sj_data = {
         "종합조사/산정특례 본인부담률": [],
-        "추가급여 월한도액": []
+        "추가급여 월한도액": {
+            "최중증1인가구": None,
+            "1등급1인가구": None,
+            "2등급이하1인가구": None, 
+            "최중증취약가구": None, 
+            "1등급취약가구": None,
+            "2등급이하취약가구": None, 
+            "출산": None, 
+            "자립준비": None, 
+            "학교생활": None, 
+            "직장생활": None, 
+            "보호자일시부재": None, 
+            "나머지가구구성원의직장생활등": None,
+        }
     }
 
     # 부담률
@@ -108,9 +120,9 @@ def read_sj_value(filename, sheet_name):
     for keyword in TARGET_KEYWORDS:
         if keyword in SJ_COL_MAP:
             offset = SJ_COL_MAP[keyword]
-            sj_data["추가급여 월한도액"].append(df.iat[target_cell[0]+1, target_cell[1]+offset])
+            sj_data["추가급여 월한도액"][keyword] = df.iat[target_cell[0]+1, target_cell[1]+offset]
         else:
-            sj_data["추가급여 월한도액"].append(0) # 못 찾은 경우 0
+            sj_data["추가급여 월한도액"][keyword] = 0 # 못 찾은 경우 0
         
 
     return sj_data
