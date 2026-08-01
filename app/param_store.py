@@ -25,11 +25,12 @@ _GUIDE = (
     "각 값의 근거는 바로 옆 '출처'에서 확인할 수 있습니다."
 )
 
+
 # 고시(hwpx)에서 추출한 단가를 파라미터 파일에 '단가_파라미터'로 저장하고 경로 반환
 def save_params(prices, gosi_filename, path=DEFAULT_PATH):
     data = {
         "_안내": _GUIDE,
-        "원본_고시": gosi_filename,
+        "원본_고시": os.path.basename(gosi_filename),
         "생성시각": datetime.now().isoformat(timespec="seconds"),
         "단가": prices,
     }
@@ -39,6 +40,7 @@ def save_params(prices, gosi_filename, path=DEFAULT_PATH):
     with open(path, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
     return path
+
 
 # 파라미터 파일 안에 있는 json '단가_파라미터' 읽기
 def load_params(path=DEFAULT_PATH):
