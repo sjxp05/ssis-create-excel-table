@@ -115,6 +115,32 @@ def read_sj_value(filename, sheet_name):
 
     return sj_data
 
+# 종합조사 헬퍼함수
+def extract_data(df, keyword, target_grades):
+
+    for row, col in zip(*((df == keyword).to_numpy().nonzero())):
+        base_r, base_c = row+1, col+17
+        break
+
+    result = []
+    col_map = {}
+
+    for r_offset in [-2, -1, 0]:
+        for c in range(len(df.columns)):
+            val = str(df.iat[base_r+r_offset, c]).replace(" ", "").replace("\n", "")
+            if val in target_grades: 
+                col_map[val] = c
+
+    for g in range(15):
+        target_zone = f"{g+1}등급"
+        actual_c = col_map.get(target_zone)
+
+        if actual_c is None:
+            raise ValueError(f"종합조사 엑셀 표에서 '{target_zone}' 텍스트를 찾을 수 없습니다.")
+                    
+        result.append(df.iat[base_r, actual_c])
+
+    return result
 
 # 종합 조사
 def read_jh_value(filename, sheet_name):
@@ -133,36 +159,10 @@ def read_jh_value(filename, sheet_name):
 
     # 월 한도액(기본/확장)
     TARGET_GRADES = [f"{i}등급" for i in range(1, 16)]
-    JH_COL_MAP = {}
-    basic_grade_cell = ()
-    expand_grade_cell = ()
 
-    for row, col in zip(*((df == "주간활동 기본형").to_numpy().nonzero())):
-        basic_grade_cell = (row, col+3)
+    jh_data["종합조사 월한도액 (기본형)"]=extract_data(df, "주간활동 기본형", TARGET_GRADES)
+    jh_data["종합조사 월한도액 (확장형)"]=extract_data(df, "주간활동 확장형", TARGET_GRADES)
 
-    for row, col in zip(*((df == "주간활동 확장형").to_numpy().nonzero())):
-            expand_grade_cell = (row, col+3)
-    
-
-    for i in range(20):  
-        try:
-            cell_val = str(df.iat[basic_grade_cell[0], basic_grade_cell[1]+i])
-            clean_val = cell_val.replace(" ", "").replace("\n", "").strip()
-                
-            if clean_val in TARGET_GRADES:
-                JH_COL_MAP[clean_val] = i
-        except IndexError:
-            break
-    
-    for grade in TARGET_GRADES:
-        if grade in JH_COL_MAP:
-            offset = JH_COL_MAP[grade]
-            jh_data["종합조사 월한도액 (기본형)"].append(df.iat[basic_grade_cell[0]+1, basic_grade_cell[1]+offset])
-            jh_data["종합조사 월한도액 (확장형)"].append(df.iat[expand_grade_cell[0]+1, expand_grade_cell[1]+offset])
-        else:
-            jh_data["종합조사 월한도액 (기본형)"].append(0)
-            jh_data["종합조사 월한도액 (확장형)"].append(0)
-            
     return jh_data
 
 def get_data_for_app(filename, sheet_names):
